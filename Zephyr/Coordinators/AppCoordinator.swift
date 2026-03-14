@@ -15,9 +15,15 @@ enum AppRoute {
 
 @MainActor
 final class AppCoordinator: ObservableObject {
-    @Published var currentRoute: AppRoute = .onboarding
+    @Published private(set) var currentRoute: AppRoute!
 
-    func showChatList() {
+    let container: ServiceContainer = .live()
+    
+    init() {
+        currentRoute = (try? container.keychain.load(key: KeychainKeys.privateKey)) != nil ? .chatList : .onboarding
+    }
+
+    func handleOnboardingComplete() {
         currentRoute = .chatList
     }
 

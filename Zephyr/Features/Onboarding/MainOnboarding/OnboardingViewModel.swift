@@ -10,14 +10,17 @@ import Combine
 
 @MainActor
 final class OnboardingViewModel: ObservableObject {
-    
     private weak var coordinator: OnboardingCoordinator?
 
     init(coordinator: OnboardingCoordinator) {
         self.coordinator = coordinator
     }
 
-    func didTapAlreadyHaveWallet() {
-        coordinator?.userDidTapAlreadyHaveWallet()
+    func didTapCreateWallet() {
+        coordinator?.navigate(to: .generateMnemonic)
+    }
+
+    func didTapRestoreWallet() {
+        coordinator?.navigate(to: .restoreMnemonic)
     }
 }

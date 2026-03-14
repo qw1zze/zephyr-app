@@ -24,20 +24,34 @@ struct AppRootView: View {
     var body: some View {
         switch coordinator.currentRoute {
         case .onboarding:
-            OnboardingCoordinatorView()
+            OnboardingCoordinatorView(
+                container: coordinator.container,
+                onComplete: coordinator.handleOnboardingComplete
+            )
         case .chatList:
             Text("Chat List")
                 .preferredColorScheme(.dark)
+        case .none:
+            EmptyView()
         }
     }
 }
 
 struct OnboardingCoordinatorView: View {
-    @StateObject private var coordinator: OnboardingCoordinator = OnboardingCoordinator()
+    @StateObject private var coordinator: OnboardingCoordinator
+
+    init(container: ServiceContainer, onComplete: @escaping () -> Void) {
+        _coordinator = StateObject(
+            wrappedValue: OnboardingCoordinator(container: container, onComplete: onComplete)
+        )
+    }
 
     var body: some View {
         NavigationStack(path: $coordinator.path) {
             coordinator.makeWelcomeView()
+                .navigationDestination(for: OnboardingCoordinator.Route.self) { route in
+                    coordinator.view(for: route)
+                }
         }
     }
 }
