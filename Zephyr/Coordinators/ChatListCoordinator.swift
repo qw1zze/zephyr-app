@@ -13,9 +13,10 @@ final class ChatListCoordinator: ObservableObject {
     @Published var path = NavigationPath()
 
     private let container: ServiceContainer
+    private var chatCoordinators: [String: ChatCoordinator] = [:]
 
     enum Route: Hashable {
-        case chat(chatId: String)
+        case chat(chatId: String, recipientAddress: String)
     }
 
     init(container: ServiceContainer) {
@@ -26,8 +27,8 @@ final class ChatListCoordinator: ObservableObject {
         path.append(route)
     }
 
-    lazy var chatListViewModel: ChatListViewModel = ChatListViewModel(container: container, onChatSelected: { [weak self] chatId in
-            self?.navigate(to: .chat(chatId: chatId))
+    lazy var chatListViewModel: ChatListViewModel = ChatListViewModel(container: container, onChatSelected: { [weak self] chatId, recipientAddress in
+            self?.navigate(to: .chat(chatId: chatId, recipientAddress: recipientAddress))
         }
     )
 
@@ -38,9 +39,22 @@ final class ChatListCoordinator: ObservableObject {
     @ViewBuilder
     func view(for route: Route) -> some View {
         switch route {
-        case .chat(let chatId):
-            Text("Chat \(chatId)")
+        case .chat(let chatId, let recipientAddress):
+            ChatView(viewModel: coordinator(for: chatId, recipientAddress: recipientAddress).viewModel)
                 .preferredColorScheme(.dark)
         }
+    }
+
+    private func coordinator(for chatId: String, recipientAddress: String) -> ChatCoordinator {
+        if let existing = chatCoordinators[chatId] {
+            return existing
+        }
+        let coordinator = ChatCoordinator(
+            chatId: chatId,
+            recipientAddress: recipientAddress,
+            container: container
+        )
+        chatCoordinators[chatId] = coordinator
+        return coordinator
     }
 }

@@ -28,10 +28,10 @@ final class ChatListViewModel: ObservableObject {
     @Published private(set) var createdChatID: UUID?
 
     private let container: ServiceContainer
-    private let onChatSelected: (String) -> Void
+    private let onChatSelected: (String, String) -> Void
     private var validationTask: Task<Void, Never>?
 
-    init(container: ServiceContainer, onChatSelected: @escaping (String) -> Void) {
+    init(container: ServiceContainer, onChatSelected: @escaping (String, String) -> Void) {
         self.container = container
         self.onChatSelected = onChatSelected
     }
@@ -101,8 +101,8 @@ final class ChatListViewModel: ObservableObject {
         }
     }
 
-    func selectChat(_ chatId: String) {
-        onChatSelected(chatId)
+    func selectChat(_ chat: ChatModel) {
+        onChatSelected(chat.id.uuidString, chat.recipientAddress)
     }
 
     func resetCreateChat() {

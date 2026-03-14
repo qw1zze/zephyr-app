@@ -45,7 +45,7 @@ struct ChatListView: View {
         List {
             ForEach(viewModel.chats, id: \.id) { chat in
                 ChatRowView(chat: chat) {
-                    viewModel.selectChat(chat.id.uuidString)
+                    viewModel.selectChat(chat)
                 }
                 .listRowBackground(Color.black)
                 .listRowSeparatorTint(Color(white: 0.12))

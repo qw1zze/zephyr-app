@@ -16,7 +16,7 @@ final class PersistenceServiceInstance: PersistenceService {
     }
 
     init() throws {
-        modelContainer = try ModelContainer(for: ChatModel.self)
+        modelContainer = try ModelContainer(for: ChatModel.self, MessageModel.self)
     }
 
     func fetchChats() throws -> [ChatModel] {
@@ -45,5 +45,42 @@ final class PersistenceServiceInstance: PersistenceService {
         )
         descriptor.fetchLimit = 1
         return try context.fetch(descriptor).first
+    }
+
+    func fetchMessages(chatId: String, limit: Int, before: Date?) async throws -> [MessageModel] {
+        let messages: [MessageModel]
+        if let before {
+            var descriptor = FetchDescriptor<MessageModel>(
+                predicate: #Predicate { $0.chatId == chatId && $0.timestamp < before },
+                sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+            )
+            descriptor.fetchLimit = limit
+            messages = try context.fetch(descriptor)
+        } else {
+            var descriptor = FetchDescriptor<MessageModel>(
+                predicate: #Predicate { $0.chatId == chatId },
+                sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+            )
+            descriptor.fetchLimit = limit
+            messages = try context.fetch(descriptor)
+        }
+        return messages.reversed()
+    }
+
+    func saveMessage(_ message: MessageModel) async throws {
+        context.insert(message)
+        try context.save()
+    }
+
+    func updateChatLastMessage(chatId: String, text: String, date: Date) async throws {
+        guard let uuid = UUID(uuidString: chatId) else { return }
+        var descriptor = FetchDescriptor<ChatModel>(
+            predicate: #Predicate { $0.id == uuid }
+        )
+        descriptor.fetchLimit = 1
+        guard let chat = try context.fetch(descriptor).first else { return }
+        chat.lastMessagePreview = text
+        chat.lastMessageDate = date
+        try context.save()
     }
 }
