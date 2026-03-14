@@ -9,9 +9,7 @@ import Foundation
 
 protocol EthereumService: AnyObject {
     func getPublicKey(address: String) async throws -> Data?
-
     func publishPublicKey(_ publicKey: Data) async throws -> String
-
     func waitForConfirmation(txHash: String) async throws
 }
 

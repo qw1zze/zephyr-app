@@ -29,10 +29,26 @@ struct AppRootView: View {
                 onComplete: coordinator.handleOnboardingComplete
             )
         case .chatList:
-            Text("Chat List")
-                .preferredColorScheme(.dark)
+            ChatListCoordinatorView(container: coordinator.container)
         case .none:
             EmptyView()
+        }
+    }
+}
+
+struct ChatListCoordinatorView: View {
+    @StateObject private var coordinator: ChatListCoordinator
+
+    init(container: ServiceContainer) {
+        _coordinator = StateObject(wrappedValue: ChatListCoordinator(container: container))
+    }
+
+    var body: some View {
+        NavigationStack(path: $coordinator.path) {
+            coordinator.makeChatListView()
+                .navigationDestination(for: ChatListCoordinator.Route.self) { route in
+                    coordinator.view(for: route)
+                }
         }
     }
 }
