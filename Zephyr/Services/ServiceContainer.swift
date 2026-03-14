@@ -8,31 +8,34 @@
 import Foundation
 
 enum KeychainKeys {
-    static let mnemonic   = "zephyr.mnemonic"
-    static let address    = "zephyr.address"
+    static let mnemonic = "zephyr.mnemonic"
+    static let address = "zephyr.address"
     static let privateKey = "zephyr.privateKey"
     static let publicKey  = "zephyr.publicKey"
 }
 
 struct ServiceContainer {
-    let keychain:  KeychainService
-    let crypto:    CryptoService
-    let ethereum:  EthereumService
+    let keychain: KeychainService
+    let crypto: CryptoService
+    let ethereum: EthereumService
+    let persistence: PersistenceService
 
     static func live() -> ServiceContainer {
         let keychain = KeychainServiceInstance()
         return ServiceContainer(
-            keychain:  keychain,
-            crypto:    CryptoServiceInstance(),
-            ethereum:  EthereumServiceInstance(keychainService: keychain)
+            keychain: keychain,
+            crypto: CryptoServiceInstance(),
+            ethereum: EthereumServiceInstance(keychainService: keychain),
+            persistence: (try? PersistenceServiceInstance()) ?? PersistenceServiceMock()
         )
     }
 
     static func mock() -> ServiceContainer {
         ServiceContainer(
-            keychain:  KeychainServiceMock(),
-            crypto:    CryptoServiceMock(),
-            ethereum:  EthereumServiceMock()
+            keychain: KeychainServiceMock(),
+            crypto: CryptoServiceMock(),
+            ethereum: EthereumServiceMock(),
+            persistence: PersistenceServiceMock()
         )
     }
 }
