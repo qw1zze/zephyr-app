@@ -8,7 +8,7 @@
 import Foundation
 import web3swift
 import Web3Core
-import CryptoSwift
+internal import CryptoSwift
 import BigInt
 
 final class EthereumServiceInstance: EthereumService {

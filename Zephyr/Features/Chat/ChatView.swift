@@ -31,6 +31,7 @@ struct ChatView: View {
         .preferredColorScheme(.dark)
         .task {
             await viewModel.loadInitialMessages()
+            viewModel.startRecieve()
         }
     }
 

@@ -8,7 +8,9 @@
 import Foundation
 
 enum Constants {
-    
+
+    static let relayWSURL    = "ws://localhost:8082/ws"
+    static let storageBaseURL = "http://localhost:8080"
     static let RPCURL = "https://ethereum-hoodi-rpc.publicnode.com"
 
     static let keyRegistryAddress = "0x4B948B5B31485F4069F48090cA7ac48B4FcD1EB4"

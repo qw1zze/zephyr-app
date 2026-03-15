@@ -26,4 +26,16 @@ final class CryptoServiceMock: CryptoService {
     func validateMnemonic(_ words: [String]) throws {
         
     }
+
+    func computeSharedSecret(myPrivateKey: Data, recipientPublicKey: Data) throws -> Data {
+        Data(repeating: 0x42, count: 32)
+    }
+
+    func encrypt(plaintext: Data, sharedSecret: Data) throws -> Data {
+        plaintext
+    }
+
+    func decrypt(ciphertext: Data, sharedSecret: Data) throws -> Data {
+        ciphertext
+    }
 }

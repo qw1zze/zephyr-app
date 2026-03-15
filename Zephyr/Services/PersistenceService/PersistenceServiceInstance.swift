@@ -39,6 +39,23 @@ final class PersistenceServiceInstance: PersistenceService {
         return chat
     }
 
+    func createChat(id: UUID, recipientAddress: String) throws -> ChatModel {
+        var descriptor = FetchDescriptor<ChatModel>(
+            predicate: #Predicate { $0.id == id }
+        )
+        
+        descriptor.fetchLimit = 1
+        if let existing = try context.fetch(descriptor).first {
+            return existing
+        }
+        
+        let chat = ChatModel(recipientAddress: recipientAddress, id: id)
+        context.insert(chat)
+        try context.save()
+        
+        return chat
+    }
+
     func chat(forAddress address: String) throws -> ChatModel? {
         var descriptor = FetchDescriptor<ChatModel>(
             predicate: #Predicate { $0.recipientAddress == address }
@@ -68,7 +85,20 @@ final class PersistenceServiceInstance: PersistenceService {
     }
 
     func saveMessage(_ message: MessageModel) async throws {
-        context.insert(message)
+        let messageId = message.id
+        var descriptor = FetchDescriptor<MessageModel>(
+            predicate: #Predicate { $0.id == messageId }
+        )
+        descriptor.fetchLimit = 1
+
+        if let existing = try context.fetch(descriptor).first {
+            existing.status = message.status
+            existing.plaintext = message.plaintext ?? existing.plaintext
+            existing.isDecrypted = message.isDecrypted || existing.isDecrypted
+            existing.cid = message.cid.isEmpty ? existing.cid : message.cid
+        } else {
+            context.insert(message)
+        }
         try context.save()
     }
 

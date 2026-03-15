@@ -75,6 +75,9 @@ final class ChatViewModel: ObservableObject {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         inputText = ""
+
+        let tempId = UUID().uuidString
+        let now = Date()
         let message = MessageModel(
             id: UUID().uuidString,
             chatId: chatId,
@@ -85,18 +88,71 @@ final class ChatViewModel: ObservableObject {
             plaintext: text,
             status: "pending"
         )
+        messages.append(message)
+        
+        try? await container.persistence.saveMessage(message)
+        try? await container.persistence.updateChatLastMessage(chatId: chatId, text: text, date: now)
+
         do {
-            try await container.persistence.saveMessage(message)
-            messages.append(message)
-            try await container.persistence.updateChatLastMessage(
-                chatId: chatId,
-                text: text,
-                date: message.timestamp
-            )
+            let sent = try await container.messageSender.send(messageId: tempId, text: text, chatId: chatId, recipientAddress: recipientAddress)
+
+            if let index = messages.firstIndex(where: { $0.id == sent.messageId }) {
+                messages[index].cid = sent.cid
+                messages[index].status = "sent"
+                try? await container.persistence.saveMessage(messages[index])
+            }
         } catch {
+            messages.removeAll { $0.id == tempId }
             self.error = error.localizedDescription
             inputText = text
         }
+    }
+
+    func startRecieve() {
+        Task {
+            for await envelope in container.envelopePublisher
+                .buffer(size: .max, prefetch: .byRequest, whenFull: .dropOldest)
+                .values {
+                await handleIncomingMessage(envelope)
+            }
+        }
+        
+        Task {
+            for await status in container.relay.deliveryStatuses {
+                await handleDeliveryStatus(status)
+            }
+        }
+    }
+
+    private func handleIncomingMessage(_ envelope: Envelope) async {
+        guard envelope.chatId == chatId else { return }
+
+        guard !messages.contains(where: { $0.id == envelope.messageId }) else { return }
+
+        let plaintext: String? = try? await container.messageSender.decrypt(envelope: envelope)
+
+        let message = MessageModel(
+            id: envelope.messageId,
+            chatId: envelope.chatId,
+            senderAddress: envelope.senderAddr,
+            cid: envelope.cid,
+            timestamp: Date(timeIntervalSince1970: TimeInterval(envelope.timestamp)),
+            isDecrypted: plaintext != nil,
+            plaintext: plaintext,
+            status: "delivered"
+        )
+
+        try? await container.persistence.saveMessage(message)
+        messages.append(message)
+
+        try? await container.relay.ack(messageId: envelope.messageId)
+    }
+
+    private func handleDeliveryStatus(_ status: ServerAckPayload) async {
+        guard let index = messages.firstIndex(where: { $0.id == status.messageId }) else { return }
+
+        messages[index].status = status.status == "delivered" ? "delivered" : "sent"
+        try? await container.persistence.saveMessage(messages[index])
     }
 
     func groupedByDay() -> [(date: Date, messages: [MessageModel])] {
