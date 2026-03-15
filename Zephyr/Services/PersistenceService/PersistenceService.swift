@@ -10,6 +10,7 @@ import Foundation
 protocol PersistenceService: AnyObject {
     func fetchChats() throws -> [ChatModel]
     func createChat(recipientAddress: String) throws -> ChatModel
+    func createChat(id: UUID, recipientAddress: String) throws -> ChatModel
     func chat(forAddress address: String) throws -> ChatModel?
     func fetchMessages(chatId: String, limit: Int, before: Date?) async throws -> [MessageModel]
     func saveMessage(_ message: MessageModel) async throws

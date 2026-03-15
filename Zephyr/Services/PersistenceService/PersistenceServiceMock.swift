@@ -28,6 +28,17 @@ final class PersistenceServiceMock: PersistenceService {
         return chat
     }
 
+    func createChat(id: UUID, recipientAddress: String) throws -> ChatModel {
+        if let existing = chats.first(where: { $0.id == id }) {
+            return existing
+        }
+        
+        let chat = ChatModel(recipientAddress: recipientAddress, id: id)
+        chats.append(chat)
+        
+        return chat
+    }
+
     func chat(forAddress address: String) throws -> ChatModel? {
         chats.first { $0.recipientAddress == address }
     }

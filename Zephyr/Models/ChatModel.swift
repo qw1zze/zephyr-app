@@ -16,7 +16,12 @@ final class ChatModel {
     var lastMessageDate: Date?
     var lastMessagePreview: String?
 
-    init(recipientAddress: String) {
+    init(recipientAddress: String, id: UUID? = nil) {
+        if let id {
+            self.id = id
+        } else {
+            self.id = UUID()
+        }
         self.id = UUID()
         self.recipientAddress = recipientAddress
         self.createdAt = Date()

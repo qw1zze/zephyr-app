@@ -15,12 +15,12 @@ struct WalletKeys {
 
 protocol CryptoService: AnyObject {
     func generateMnemonic() throws -> [String]
-
     func deriveWallet(from words: [String]) throws -> WalletKeys
-
     func isValidWord(_ word: String) -> Bool
-
     func validateMnemonic(_ words: [String]) throws
+    func computeSharedSecret(myPrivateKey: Data, recipientPublicKey: Data) throws -> Data
+    func encrypt(plaintext: Data, sharedSecret: Data) throws -> Data
+    func decrypt(ciphertext: Data, sharedSecret: Data) throws -> Data
 }
 
 enum CryptoError: LocalizedError {
@@ -29,19 +29,31 @@ enum CryptoError: LocalizedError {
     case addressDerivationFailed
     case privateKeyExtractionFailed
     case publicKeyDerivationFailed
+    case sharedSecretFailed
+    case invalidCiphertext
+    case encryptionFailed
+    case decryptionFailed
 
     var errorDescription: String? {
         switch self {
-        case .invalidMnemonic:            
+        case .invalidMnemonic:
             return "Неверная мнемоническая фраза"
-        case .keyDerivationFailed:        
+        case .keyDerivationFailed:
             return "Ошибка деривации ключа"
-        case .addressDerivationFailed:    
+        case .addressDerivationFailed:
             return "Ошибка деривации адреса"
-        case .privateKeyExtractionFailed: 
+        case .privateKeyExtractionFailed:
             return "Ошибка извлечения приватного ключа"
-        case .publicKeyDerivationFailed:  
+        case .publicKeyDerivationFailed:
             return "Ошибка деривации публичного ключа"
+        case .sharedSecretFailed:
+            return "Ошибка вычисления shared secret"
+        case .invalidCiphertext:
+            return "Некорректный зашифрованный текст"
+        case .encryptionFailed:
+            return "Ошибка шифрования"
+        case .decryptionFailed:
+            return "Ошибка расшифровки"
         }
     }
 }

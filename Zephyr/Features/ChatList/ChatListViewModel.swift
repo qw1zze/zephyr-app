@@ -105,6 +105,61 @@ final class ChatListViewModel: ObservableObject {
         onChatSelected(chat.id.uuidString, chat.recipientAddress)
     }
 
+    func startListen() {
+        Task {
+            do {
+                try await container.relay.connect()
+            } catch {
+                self.error = error.localizedDescription
+            }
+            
+            for await envelope in container.relay.incomingEnvelopes {
+                container.envelopePublisher.send(envelope)
+            }
+        }
+
+        Task {
+            for await envelope in container.envelopePublisher
+                .buffer(size: .max, prefetch: .byRequest, whenFull: .dropOldest)
+                .values {
+                await handleIncomingMessage(envelope)
+            }
+        }
+    }
+
+    private func handleIncomingMessage(_ envelope: Envelope) async {
+        guard let chatUUID = UUID(uuidString: envelope.chatId) else { return }
+
+        do {
+            if !chats.contains(where: { $0.id == chatUUID }) {
+                _ = try container.persistence.createChat(id: chatUUID, recipientAddress: envelope.senderAddr)
+            }
+
+            let plaintext: String? = try? await container.messageSender.decrypt(envelope: envelope)
+            let messageTimestamp = Date(timeIntervalSince1970: TimeInterval(envelope.timestamp))
+            let message = MessageModel(
+                id: envelope.messageId,
+                chatId: envelope.chatId,
+                senderAddress: envelope.senderAddr,
+                cid: envelope.cid,
+                timestamp: messageTimestamp,
+                isDecrypted: plaintext != nil,
+                plaintext: plaintext,
+                status: "delivered"
+            )
+            
+            try await container.persistence.saveMessage(message)
+
+            if let plaintext {
+                try await container.persistence.updateChatLastMessage(chatId: envelope.chatId, text: plaintext, date: messageTimestamp)
+            }
+
+            chats = try container.persistence.fetchChats()
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
     func resetCreateChat() {
         newChatAddress = ""
         addressValidation = .idle

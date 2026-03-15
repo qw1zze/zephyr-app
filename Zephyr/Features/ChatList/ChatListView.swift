@@ -37,7 +37,10 @@ struct ChatListView: View {
         .sheet(isPresented: $showCreateChat) {
             CreateChatSheet(viewModel: viewModel)
         }
-        .task { await viewModel.loadChats() }
+        .task {
+            await viewModel.loadChats()
+            viewModel.startListen()
+        }
         .preferredColorScheme(.dark)
     }
 

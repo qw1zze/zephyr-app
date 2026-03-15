@@ -6,6 +6,8 @@
 //
 
 import Foundation
+import Combine
+import os
 
 enum KeychainKeys {
     static let mnemonic = "zephyr.mnemonic"
@@ -19,23 +21,65 @@ struct ServiceContainer {
     let crypto: CryptoService
     let ethereum: EthereumService
     let persistence: PersistenceService
+    let relay: RelayService
+    let storage: StorageService
+    let messageSender: MessageSender
+
+    let envelopePublisher: PassthroughSubject<Envelope, Never>
 
     static func live() -> ServiceContainer {
         let keychain = KeychainServiceInstance()
+        let crypto = CryptoServiceInstance()
+        let ethereum = EthereumServiceInstance(keychainService: keychain)
+        let relay = RelayServiceInstance(wsURL: URL(string: Constants.relayWSURL)!, keychain: keychain,
+                                         logger: Logger(subsystem: "com.zephyr.app", category: "RelayClient"))
+        let storage = StorageServiceInstance(baseURL: URL(string: Constants.storageBaseURL)!,
+                                               logger: Logger(subsystem: "com.zephyr.app", category: "StorageClient"))
+        let sender = MessageSender(
+            keychain: keychain,
+            ethereum: ethereum,
+            storage: storage,
+            relay: relay,
+            crypto: crypto,
+            logger: Logger(subsystem: "com.zephyr.app", category: "MessageSender")
+        )
+        
         return ServiceContainer(
             keychain: keychain,
-            crypto: CryptoServiceInstance(),
-            ethereum: EthereumServiceInstance(keychainService: keychain),
-            persistence: (try? PersistenceServiceInstance()) ?? PersistenceServiceMock()
+            crypto: crypto,
+            ethereum: ethereum,
+            persistence: (try? PersistenceServiceInstance()) ?? PersistenceServiceMock(),
+            relay: relay,
+            storage: storage,
+            messageSender: sender,
+            envelopePublisher: PassthroughSubject<Envelope, Never>()
         )
     }
 
     static func mock() -> ServiceContainer {
-        ServiceContainer(
-            keychain: KeychainServiceMock(),
-            crypto: CryptoServiceMock(),
-            ethereum: EthereumServiceMock(),
-            persistence: PersistenceServiceMock()
+        let keychain = KeychainServiceMock()
+        let crypto = CryptoServiceMock()
+        let ethereum = EthereumServiceMock()
+        let relay = RelayServiceMock()
+        let storage = StorageServiceMock()
+        let sender = MessageSender(
+            keychain: keychain,
+            ethereum: ethereum,
+            storage: storage,
+            relay: relay,
+            crypto: crypto,
+            logger: Logger(subsystem: "com.zephyr.app", category: "MessageSender")
+        )
+        
+        return ServiceContainer(
+            keychain: keychain,
+            crypto: crypto,
+            ethereum: ethereum,
+            persistence: PersistenceServiceMock(),
+            relay: relay,
+            storage: storage,
+            messageSender: sender,
+            envelopePublisher: PassthroughSubject<Envelope, Never>()
         )
     }
 }
