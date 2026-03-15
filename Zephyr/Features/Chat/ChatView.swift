@@ -29,9 +29,55 @@ struct ChatView: View {
         .navigationTitle(formattedAddress(viewModel.recipientAddress))
         .navigationBarTitleDisplayMode(.inline)
         .preferredColorScheme(.dark)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                recoveryButton
+            }
+        }
+        .alert(recoveryAlertTitle, isPresented: .constant(isRecoveryAlertPresented)) {
+            Button("OK") {
+                viewModel.dismissRecoveryAlert()
+            }
+        }
         .task {
             await viewModel.loadInitialMessages()
             viewModel.startRecieve()
+        }
+    }
+
+    private var isRecoveryAlertPresented: Bool {
+        switch viewModel.recoveryState {
+        case .done, .failed:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private var recoveryAlertTitle: String {
+        switch viewModel.recoveryState {
+        case .done(let count):
+            return count > 0 ? "сообщения восстановлены" : "Новых сообщений не найдено"
+        case .failed(let msg):
+            return "Ошибка восстановления: \(msg)"
+        default:
+            return ""
+        }
+    }
+
+    @ViewBuilder
+    private var recoveryButton: some View {
+        switch viewModel.recoveryState {
+        case .recovering:
+            ProgressView()
+                .tint(.white)
+        default:
+            Button {
+                viewModel.recoverFromBlockchain()
+            } label: {
+                Image(systemName: "arrow.clockwise.icloud")
+                    .foregroundColor(.white)
+            }
         }
     }
 

@@ -10,13 +10,23 @@ import SwiftData
 
 final class PersistenceServiceInstance: PersistenceService {
     private let modelContainer: ModelContainer
-    
+
     private var context: ModelContext {
         modelContainer.mainContext
     }
 
     init() throws {
-        modelContainer = try ModelContainer(for: ChatModel.self, MessageModel.self)
+        do {
+            modelContainer = try ModelContainer(for: ChatModel.self, MessageModel.self)
+        } catch {
+            let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            if let storeDir = appSupport {
+                try? FileManager.default.contentsOfDirectory(at: storeDir, includingPropertiesForKeys: nil)
+                    .filter { $0.pathExtension == "store" || $0.lastPathComponent.contains("default") }
+                    .forEach { try? FileManager.default.removeItem(at: $0) }
+            }
+            modelContainer = try ModelContainer(for: ChatModel.self, MessageModel.self)
+        }
     }
 
     func fetchChats() throws -> [ChatModel] {
@@ -33,26 +43,25 @@ final class PersistenceServiceInstance: PersistenceService {
         if let existing = try chat(forAddress: recipientAddress) {
             return existing
         }
-        let chat = ChatModel(recipientAddress: recipientAddress)
+        let chat = ChatModel(id: UUID().uuidString, recipientAddress: recipientAddress)
         context.insert(chat)
         try context.save()
         return chat
     }
 
-    func createChat(id: UUID, recipientAddress: String) throws -> ChatModel {
+    func createChat(id: String, recipientAddress: String) throws -> ChatModel {
         var descriptor = FetchDescriptor<ChatModel>(
             predicate: #Predicate { $0.id == id }
         )
-        
         descriptor.fetchLimit = 1
         if let existing = try context.fetch(descriptor).first {
             return existing
         }
-        
-        let chat = ChatModel(recipientAddress: recipientAddress, id: id)
+
+        let chat = ChatModel(id: id, recipientAddress: recipientAddress)
         context.insert(chat)
         try context.save()
-        
+
         return chat
     }
 
@@ -62,6 +71,32 @@ final class PersistenceServiceInstance: PersistenceService {
         )
         descriptor.fetchLimit = 1
         return try context.fetch(descriptor).first
+    }
+
+    func isChatRegisteredOnChain(chatId: String) throws -> Bool {
+        var descriptor = FetchDescriptor<ChatModel>(
+            predicate: #Predicate { $0.id == chatId }
+        )
+        descriptor.fetchLimit = 1
+        return try context.fetch(descriptor).first?.isRegisteredOnChain ?? false
+    }
+
+    func markChatRegistered(chatId: String) throws {
+        var descriptor = FetchDescriptor<ChatModel>(
+            predicate: #Predicate { $0.id == chatId }
+        )
+        descriptor.fetchLimit = 1
+        guard let chat = try context.fetch(descriptor).first else { return }
+        chat.isRegisteredOnChain = true
+        try context.save()
+    }
+
+    func messageExists(id: String) throws -> Bool {
+        var descriptor = FetchDescriptor<MessageModel>(
+            predicate: #Predicate { $0.id == id }
+        )
+        descriptor.fetchLimit = 1
+        return try !context.fetch(descriptor).isEmpty
     }
 
     func fetchMessages(chatId: String, limit: Int, before: Date?) async throws -> [MessageModel] {
@@ -103,9 +138,8 @@ final class PersistenceServiceInstance: PersistenceService {
     }
 
     func updateChatLastMessage(chatId: String, text: String, date: Date) async throws {
-        guard let uuid = UUID(uuidString: chatId) else { return }
         var descriptor = FetchDescriptor<ChatModel>(
-            predicate: #Predicate { $0.id == uuid }
+            predicate: #Predicate { $0.id == chatId }
         )
         descriptor.fetchLimit = 1
         guard let chat = try context.fetch(descriptor).first else { return }

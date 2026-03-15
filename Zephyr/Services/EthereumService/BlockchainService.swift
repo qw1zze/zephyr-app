@@ -1,16 +1,30 @@
 //
-//  EthereumService.swift
+//  BlockchainService.swift
 //  Zephyr
 //
 //  Created by Dmitriy Kalyakin on 13/3/26.
 //
 
 import Foundation
+import BigInt
 
-protocol EthereumService: AnyObject {
+struct BatchAnchoredEvent {
+    let sender: String
+    let messageIds: [String]
+    let cids: [String]
+    let timestamps: [Int64]
+    let blockNumber: UInt64
+}
+
+protocol BlockchainService: AnyObject {
     func getPublicKey(address: String) async throws -> Data?
     func publishPublicKey(_ publicKey: Data) async throws -> String
     func waitForConfirmation(txHash: String) async throws
+    func createChat(chatId: String, recipientAddress: String) async throws -> String
+    func anchorBatch(chatId: String, messageIds: [String], cids: [String], timestamps: [Int64]) async throws -> String
+    func getChatCreatedAtBlock(chatId: String) async throws -> UInt64
+    func getAnchoredBatches(chatId: String, fromBlock: UInt64, toBlock: UInt64) async throws -> [BatchAnchoredEvent]
+    func getLatestBlock() async throws -> UInt64
 }
 
 enum EthereumError: LocalizedError {

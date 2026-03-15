@@ -33,13 +33,13 @@ enum MessageSenderError: Error, LocalizedError {
 
 actor MessageSender {
     private let keychain: KeychainService
-    private let ethereum: EthereumService
+    private let ethereum: BlockchainService
     private let storage: StorageService
     private let relay: RelayService
     private let crypto: CryptoService
     private let logger: Logger
 
-    init(keychain: KeychainService, ethereum: EthereumService, storage: StorageService,
+    init(keychain: KeychainService, ethereum: BlockchainService, storage: StorageService,
          relay: RelayService, crypto: CryptoService, logger: Logger) {
         self.keychain = keychain
         self.ethereum = ethereum
@@ -96,14 +96,28 @@ actor MessageSender {
 
         let ciphertext = try await storage.download(cid: envelope.cid)
 
-        guard let senderPublicKey = try await ethereum.getPublicKey(address: envelope.senderAddr) else {
+        guard let senderPublicKey = try await ethereum.getPublicKey(address: envelope.recipientAddr) else {
             throw MessageSenderError.recipientKeyNotFound
         }
 
-        let sharedSecret = try await crypto.computeSharedSecret(myPrivateKey: privateKey, recipientPublicKey: senderPublicKey)
-        let plaintextData = try await crypto.decrypt(ciphertext: ciphertext, sharedSecret: sharedSecret)
+        var plainTextData = Data()
+        do {
+            let sharedSecret = try await crypto.computeSharedSecret(myPrivateKey: privateKey, recipientPublicKey: senderPublicKey)
+            plainTextData = try await crypto.decrypt(ciphertext: ciphertext, sharedSecret: sharedSecret)
+        } catch {
+            do {
+                guard let senderPublicKey = try await ethereum.getPublicKey(address: envelope.senderAddr) else {
+                    throw MessageSenderError.recipientKeyNotFound
+                }
+                
+                let sharedSecret = try await crypto.computeSharedSecret(myPrivateKey: privateKey, recipientPublicKey: senderPublicKey)
+                plainTextData = try await crypto.decrypt(ciphertext: ciphertext, sharedSecret: sharedSecret)
+            } catch {
+                throw MessageSenderError.senderAddressCorrupted
+            }
+        }
         
-        guard let text = String(data: plaintextData, encoding: .utf8) else {
+        guard let text = String(data: plainTextData, encoding: .utf8) else {
             throw MessageSenderError.senderAddressCorrupted
         }
 

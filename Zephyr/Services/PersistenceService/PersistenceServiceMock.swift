@@ -23,24 +23,34 @@ final class PersistenceServiceMock: PersistenceService {
         if let existing = chats.first(where: { $0.recipientAddress == recipientAddress }) {
             return existing
         }
-        let chat = ChatModel(recipientAddress: recipientAddress)
+        let chat = ChatModel(id: UUID().uuidString, recipientAddress: recipientAddress)
         chats.append(chat)
         return chat
     }
 
-    func createChat(id: UUID, recipientAddress: String) throws -> ChatModel {
+    func createChat(id: String, recipientAddress: String) throws -> ChatModel {
         if let existing = chats.first(where: { $0.id == id }) {
             return existing
         }
-        
-        let chat = ChatModel(recipientAddress: recipientAddress, id: id)
+        let chat = ChatModel(id: id, recipientAddress: recipientAddress)
         chats.append(chat)
-        
         return chat
     }
 
     func chat(forAddress address: String) throws -> ChatModel? {
         chats.first { $0.recipientAddress == address }
+    }
+
+    func isChatRegisteredOnChain(chatId: String) throws -> Bool {
+        chats.first { $0.id == chatId }?.isRegisteredOnChain ?? false
+    }
+
+    func markChatRegistered(chatId: String) throws {
+        chats.first { $0.id == chatId }?.isRegisteredOnChain = true
+    }
+
+    func messageExists(id: String) throws -> Bool {
+        messages.contains { $0.id == id }
     }
 
     func fetchMessages(chatId: String, limit: Int, before: Date?) async throws -> [MessageModel] {
@@ -56,7 +66,7 @@ final class PersistenceServiceMock: PersistenceService {
     }
 
     func updateChatLastMessage(chatId: String, text: String, date: Date) async throws {
-        guard let chat = chats.first(where: { $0.id.uuidString == chatId }) else { return }
+        guard let chat = chats.first(where: { $0.id == chatId }) else { return }
         chat.lastMessagePreview = text
         chat.lastMessageDate = date
     }
