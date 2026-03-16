@@ -13,7 +13,7 @@ struct VerifyMnemonicView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            AppTheme.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 header
@@ -51,11 +51,11 @@ struct VerifyMnemonicView: View {
         VStack(spacing: 8) {
             Text("Подтвердите фразу")
                 .font(.system(size: 24, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(AppTheme.textPrimary)
 
             Text("Введите слова под указанными номерами")
                 .font(.system(size: 14, weight: .regular))
-                .foregroundStyle(Color(white: 0.55))
+                .foregroundStyle(AppTheme.textSecondary)
                 .multilineTextAlignment(.center)
         }
     }
@@ -84,14 +84,14 @@ struct VerifyMnemonicView: View {
                 } else {
                     Text("Подтвердить")
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(viewModel.isValid ? .black : Color(white: 0.35))
+                        .foregroundStyle(viewModel.isValid ? .black : AppTheme.textTertiary)
                 }
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(viewModel.isValid ? Color.white : Color(white: 0.15))
+                RoundedRectangle(cornerRadius: AppTheme.radiusPill)
+                    .fill(viewModel.isValid ? AppTheme.accent : AppTheme.surface)
             )
         }
     }

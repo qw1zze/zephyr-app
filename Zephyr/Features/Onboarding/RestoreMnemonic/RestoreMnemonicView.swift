@@ -15,7 +15,7 @@ struct RestoreMnemonicView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            AppTheme.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 mnemonicGrid
@@ -32,7 +32,7 @@ struct RestoreMnemonicView: View {
                     .padding(.top, 16)
                     .padding(.horizontal, 24)
                 }
-                    
+                
                 Spacer()
 
                 restoreButton
@@ -82,14 +82,14 @@ struct RestoreMnemonicView: View {
                 } else {
                     Text("Восстановить кошелёк")
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(viewModel.isReady ? .black : Color(white: 0.35))
+                        .foregroundStyle(viewModel.isReady ? .black : AppTheme.textTertiary)
                 }
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(viewModel.isReady ? Color.white : Color(white: 0.15))
+                RoundedRectangle(cornerRadius: AppTheme.radiusPill)
+                    .fill(viewModel.isReady ? AppTheme.accent : AppTheme.surface)
             )
         }
     }

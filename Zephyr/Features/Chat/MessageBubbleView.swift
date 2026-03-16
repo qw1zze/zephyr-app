@@ -40,15 +40,15 @@ struct MessageBubbleView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 18))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18)
-                        .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
                 )
         } else {
             Text(message.plaintext ?? "")
                 .font(.system(size: 16))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                .background(isOutgoing ? Color.blue : Color(.systemGray5))
-                .foregroundColor(isOutgoing ? .white : .primary)
+                .background(isOutgoing ? AppTheme.accent : AppTheme.surface)
+                .foregroundColor(isOutgoing ? .black : AppTheme.textPrimary)
                 .clipShape(RoundedRectangle(cornerRadius: 18))
         }
     }
@@ -57,7 +57,7 @@ struct MessageBubbleView: View {
         HStack(spacing: 4) {
             Text(message.timestamp.formatted(.dateTime.hour().minute()))
                 .font(.caption2)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.textTertiary)
             if isOutgoing {
                 StatusIcon(status: message.messageStatus)
             }
@@ -74,16 +74,16 @@ extension MessageBubbleView {
                 switch status {
                 case .pending:
                     Image(systemName: "clock")
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.textTertiary)
                 case .sent:
                     Image(systemName: "checkmark")
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.textTertiary)
                 case .delivered:
                     HStack(spacing: -3) {
                         Image(systemName: "checkmark")
                         Image(systemName: "checkmark")
                     }
-                    .foregroundColor(.blue)
+                    .foregroundColor(AppTheme.accent)
                 }
             }
             .font(.caption2)

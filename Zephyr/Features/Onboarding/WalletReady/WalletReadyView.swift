@@ -21,7 +21,7 @@ struct WalletReadyView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            AppTheme.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 Spacer()
@@ -34,10 +34,10 @@ struct WalletReadyView: View {
                 addressField
                     .padding(.horizontal, 20)
                     .padding(.vertical, 14)
-                    .background(Color(white: 0.08), in: RoundedRectangle(cornerRadius: 12))
+                    .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: AppTheme.radiusCard))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color(white: 0.15), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: AppTheme.radiusCard)
+                            .stroke(AppTheme.surfaceHigh, lineWidth: 1)
                     )
 
                 Spacer()
@@ -54,12 +54,12 @@ struct WalletReadyView: View {
     private var checkImage: some View {
         ZStack {
             Circle()
-                .fill(Color(white: 0.1))
+                .fill(AppTheme.accent.opacity(0.15))
                 .frame(width: 96, height: 96)
 
             Image(systemName: "checkmark")
                 .font(.system(size: 40, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(AppTheme.accent)
         }
     }
     
@@ -67,12 +67,12 @@ struct WalletReadyView: View {
     private var title: some View {
         Text(isRestored ? "Кошелёк восстановлен" : "Кошелёк создан")
             .font(.system(size: 26, weight: .bold))
-            .foregroundStyle(.white)
+            .foregroundStyle(AppTheme.textPrimary)
             .padding(.bottom, 8)
 
         Text("Ваш Ethereum адрес")
             .font(.system(size: 13))
-            .foregroundStyle(Color(white: 0.5))
+            .foregroundStyle(AppTheme.textSecondary)
             .padding(.bottom, 16)
     }
     
@@ -80,12 +80,12 @@ struct WalletReadyView: View {
         HStack(spacing: 10) {
             Text(shortAddress)
                 .font(.system(size: 15, weight: .semibold, design: .monospaced))
-                .foregroundStyle(.white)
+                .foregroundStyle(AppTheme.textPrimary)
 
             Button(action: copyAddress) {
                 Image(systemName: addressCopied ? "checkmark" : "doc.on.doc")
                     .font(.system(size: 14))
-                    .foregroundStyle(addressCopied ? .green : Color(white: 0.55))
+                    .foregroundStyle(addressCopied ? AppTheme.accent : AppTheme.textSecondary)
                     .animation(.easeInOut(duration: 0.2), value: addressCopied)
             }
         }
@@ -98,7 +98,7 @@ struct WalletReadyView: View {
                 .foregroundStyle(.black)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(Color.white, in: RoundedRectangle(cornerRadius: 14))
+                .background(AppTheme.accent, in: RoundedRectangle(cornerRadius: AppTheme.radiusPill))
         }
     }
 
