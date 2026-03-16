@@ -64,6 +64,10 @@ extension RelayServiceInstance {
 
     struct AckPayload: Encodable {
         let messageId: String
+        
+        enum CodingKeys: String, CodingKey {
+            case messageId = "message_id"
+        }
     }
 
     struct EmptyPayload: Encodable {}

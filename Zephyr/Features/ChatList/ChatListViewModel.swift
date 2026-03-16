@@ -25,7 +25,7 @@ final class ChatListViewModel: ObservableObject {
     @Published var newChatAddress = ""
     @Published private(set) var addressValidation = AddressValidation.idle
     @Published private(set) var isCreatingChat = false
-    @Published private(set) var createdChatID: UUID?
+    @Published private(set) var createdChatID: String?
 
     private let container: ServiceContainer
     private let onChatSelected: (String, String) -> Void
@@ -91,7 +91,10 @@ final class ChatListViewModel: ObservableObject {
         error = nil
         defer { isCreatingChat = false }
         do {
-            let chat = try container.persistence.createChat(recipientAddress: recipientAddress)
+            let myAddress = (try? container.keychain.load(key: KeychainKeys.address))
+                .flatMap { String(data: $0, encoding: .utf8) } ?? ""
+            let chatId = generateChatId(address1: myAddress, address2: recipientAddress)
+            let chat = try container.persistence.createChat(id: chatId, recipientAddress: recipientAddress)
             chats = try container.persistence.fetchChats()
             newChatAddress = ""
             addressValidation = .idle
@@ -102,7 +105,7 @@ final class ChatListViewModel: ObservableObject {
     }
 
     func selectChat(_ chat: ChatModel) {
-        onChatSelected(chat.id.uuidString, chat.recipientAddress)
+        onChatSelected(chat.id, chat.recipientAddress)
     }
 
     func startListen() {
@@ -128,11 +131,9 @@ final class ChatListViewModel: ObservableObject {
     }
 
     private func handleIncomingMessage(_ envelope: Envelope) async {
-        guard let chatUUID = UUID(uuidString: envelope.chatId) else { return }
-
         do {
-            if !chats.contains(where: { $0.id == chatUUID }) {
-                _ = try container.persistence.createChat(id: chatUUID, recipientAddress: envelope.senderAddr)
+            if !chats.contains(where: { $0.id == envelope.chatId }) {
+                _ = try container.persistence.createChat(id: envelope.chatId, recipientAddress: envelope.senderAddr)
             }
 
             let plaintext: String? = try? await container.messageSender.decrypt(envelope: envelope)

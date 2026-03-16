@@ -17,6 +17,15 @@ final class ChatViewModel: ObservableObject {
     @Published private(set) var error: String?
     @Published var inputText = ""
 
+    enum RecoveryState: Equatable {
+        case idle
+        case recovering
+        case done(newMessages: Int)
+        case failed(String)
+    }
+    
+    @Published private(set) var recoveryState: RecoveryState = .idle
+
     let chatId: String
     let recipientAddress: String
     let myAddress: String
@@ -24,6 +33,7 @@ final class ChatViewModel: ObservableObject {
     private let container: ServiceContainer
     private let pageSize = 30
     private var oldestLoadedDate: Date?
+    private var chatIsRegisteredOnChain = false
 
     init(chatId: String, recipientAddress: String, myAddress: String, container: ServiceContainer) {
         self.chatId = chatId
@@ -36,6 +46,7 @@ final class ChatViewModel: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         do {
+            chatIsRegisteredOnChain = (try? container.persistence.isChatRegisteredOnChain(chatId: chatId)) ?? false
             let loaded = try await container.persistence.fetchMessages(
                 chatId: chatId,
                 limit: pageSize,
@@ -76,10 +87,25 @@ final class ChatViewModel: ObservableObject {
         guard !text.isEmpty else { return }
         inputText = ""
 
-        let tempId = UUID().uuidString
+        let isFirstMessage = !chatIsRegisteredOnChain && messages.isEmpty
+        if isFirstMessage {
+            chatIsRegisteredOnChain = true
+            try? container.persistence.markChatRegistered(chatId: chatId)
+            let chatIdCopy = chatId
+            let recipientCopy = recipientAddress
+            Task {
+                do {
+                    print(try await container.ethereum.createChat(chatId: chatIdCopy, recipientAddress: recipientCopy))
+                } catch {
+                    print(error.localizedDescription)
+                }
+            }
+        }
+
+        let messageId = UUID().uuidString
         let now = Date()
         let message = MessageModel(
-            id: UUID().uuidString,
+            id: messageId,
             chatId: chatId,
             senderAddress: myAddress,
             cid: "",
@@ -89,20 +115,24 @@ final class ChatViewModel: ObservableObject {
             status: "pending"
         )
         messages.append(message)
-        
+
         try? await container.persistence.saveMessage(message)
         try? await container.persistence.updateChatLastMessage(chatId: chatId, text: text, date: now)
 
         do {
-            let sent = try await container.messageSender.send(messageId: tempId, text: text, chatId: chatId, recipientAddress: recipientAddress)
+            let sent = try await container.messageSender.send(messageId: messageId, text: text, chatId: chatId, recipientAddress: recipientAddress)
 
             if let index = messages.firstIndex(where: { $0.id == sent.messageId }) {
                 messages[index].cid = sent.cid
                 messages[index].status = "sent"
                 try? await container.persistence.saveMessage(messages[index])
             }
+
+            Task {
+                await container.messageBatch.add(chatId: chatId, messageId: sent.messageId, cid: sent.cid, timestamp: Int64(now.timeIntervalSince1970))
+            }
         } catch {
-            messages.removeAll { $0.id == tempId }
+            messages.removeAll { $0.id == messageId }
             self.error = error.localizedDescription
             inputText = text
         }
@@ -153,6 +183,40 @@ final class ChatViewModel: ObservableObject {
 
         messages[index].status = status.status == "delivered" ? "delivered" : "sent"
         try? await container.persistence.saveMessage(messages[index])
+    }
+
+    func dismissRecoveryAlert() {
+        recoveryState = .idle
+    }
+
+    func recoverFromBlockchain() {
+        guard recoveryState != .recovering else { return }
+        
+        recoveryState = .recovering
+        Task {
+            do {
+                let recovered = try await container.blockchainRecovery.recover(chatId: chatId, recipientAddress: recipientAddress)
+
+                for model in recovered {
+                    try? await container.persistence.saveMessage(model)
+                }
+
+                if !recovered.isEmpty {
+                    let existingIds = Set(messages.map(\.id))
+                    let newOnes = recovered.filter { !existingIds.contains($0.id) }
+                    messages = (messages + newOnes).sorted { $0.timestamp < $1.timestamp }
+                    oldestLoadedDate = messages.first?.timestamp
+
+                    if let latest = messages.last {
+                        try? await container.persistence.updateChatLastMessage(chatId: chatId, text: latest.plaintext ?? "", date: latest.timestamp)
+                    }
+                }
+
+                recoveryState = .done(newMessages: recovered.count)
+            } catch {
+                recoveryState = .failed(error.localizedDescription)
+            }
+        }
     }
 
     func groupedByDay() -> [(date: Date, messages: [MessageModel])] {

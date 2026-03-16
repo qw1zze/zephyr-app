@@ -10,22 +10,19 @@ import SwiftData
 
 @Model
 final class ChatModel {
-    var id: UUID
+    var id: String
     var recipientAddress: String
     var createdAt: Date
     var lastMessageDate: Date?
     var lastMessagePreview: String?
+    var isRegisteredOnChain: Bool
 
-    init(recipientAddress: String, id: UUID? = nil) {
-        if let id {
-            self.id = id
-        } else {
-            self.id = UUID()
-        }
-        self.id = UUID()
+    init(id: String, recipientAddress: String) {
+        self.id = id
         self.recipientAddress = recipientAddress
         self.createdAt = Date()
         self.lastMessageDate = nil
         self.lastMessagePreview = nil
+        self.isRegisteredOnChain = false
     }
 }
