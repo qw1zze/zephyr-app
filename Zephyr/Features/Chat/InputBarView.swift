@@ -11,9 +11,12 @@ extension ChatView {
     struct InputBarView: View {
         @Binding var text: String
         let onSend: () -> Void
+        let onPickImage: () -> Void
 
         var body: some View {
             HStack(alignment: .bottom, spacing: 8) {
+                imageButton
+
                 messageField
 
                 sendButton
@@ -23,7 +26,15 @@ extension ChatView {
             .background(Color(.systemBackground))
             .shadow(color: .black.opacity(0.05), radius: 4, y: -2)
         }
-        
+
+        private var imageButton: some View {
+            Button(action: onPickImage) {
+                Image(systemName: "photo")
+                    .font(.system(size: 24))
+                    .foregroundColor(.blue)
+            }
+        }
+
         private var messageField: some View {
             TextField("Сообщение", text: $text, axis: .vertical)
                 .lineLimit(1...5)

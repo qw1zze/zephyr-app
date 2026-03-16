@@ -154,23 +154,44 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
+    func sendImage(_ imageData: Data) async {
+        let messageId = UUID().uuidString
+        let now = Date()
+        let message = MessageModel(id: messageId, chatId: chatId, senderAddress: myAddress, cid: "",
+                                   timestamp: now, isDecrypted: true, plaintext: nil, messageType: "image", imageData: imageData, status: "pending")
+        messages.append(message)
+        
+        try? await container.persistence.saveMessage(message)
+        try? await container.persistence.updateChatLastMessage(chatId: chatId, text: "📷 Изображение", date: now)
+
+        do {
+            let sent = try await container.messageSender.sendImage(messageId: messageId, imageData: imageData, chatId: chatId, recipientAddress: recipientAddress)
+            if let index = messages.firstIndex(where: { $0.id == sent.messageId }) {
+                messages[index].cid = sent.cid
+                messages[index].status = "sent"
+                try? await container.persistence.saveMessage(messages[index])
+            }
+            
+            Task {
+                await container.messageBatch.add(chatId: chatId, messageId: sent.messageId, cid: sent.cid, timestamp: Int64(now.timeIntervalSince1970))
+            }
+        } catch {
+            messages.removeAll { $0.id == messageId }
+            self.error = error.localizedDescription
+        }
+    }
+
     private func handleIncomingMessage(_ envelope: Envelope) async {
         guard envelope.chatId == chatId else { return }
 
         guard !messages.contains(where: { $0.id == envelope.messageId }) else { return }
 
-        let plaintext: String? = try? await container.messageSender.decrypt(envelope: envelope)
+        let decrypted: DecryptedMessage? = try? await container.messageSender.decrypt(envelope: envelope)
 
-        let message = MessageModel(
-            id: envelope.messageId,
-            chatId: envelope.chatId,
-            senderAddress: envelope.senderAddr,
-            cid: envelope.cid,
-            timestamp: Date(timeIntervalSince1970: TimeInterval(envelope.timestamp)),
-            isDecrypted: plaintext != nil,
-            plaintext: plaintext,
-            status: "delivered"
-        )
+        let message = MessageModel(id: envelope.messageId, chatId: envelope.chatId, senderAddress: envelope.senderAddr,
+                                   cid: envelope.cid, timestamp: Date(timeIntervalSince1970: TimeInterval(envelope.timestamp)),
+                                   isDecrypted: decrypted != nil, plaintext: decrypted?.text, messageType: decrypted?.messageType,
+                                   imageData: decrypted?.imageData, status: "delivered")
 
         try? await container.persistence.saveMessage(message)
         messages.append(message)

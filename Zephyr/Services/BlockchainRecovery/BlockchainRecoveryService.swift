@@ -82,11 +82,13 @@ actor BlockchainRecoveryService {
                                                     recipientAddr: recipientAddress, cid: meta.cid, timestamp: meta.timestamp,
                                                     encryptedPayload: nil, signature: nil)
                             
-                            let plaintext = try await self.messageSender.decrypt(envelope: envelope)
+                            let decrypted = try await self.messageSender.decrypt(envelope: envelope)
                             
                             let model = MessageModel(id: meta.messageId, chatId: chatId, senderAddress: meta.sender,
                                                      cid: meta.cid, timestamp: Date(timeIntervalSince1970: TimeInterval(meta.timestamp)),
-                                                     isDecrypted: true, plaintext: plaintext, status: "delivered")
+                                                     isDecrypted: true, plaintext: decrypted.text,
+                                                     messageType: decrypted.messageType, imageData: decrypted.imageData,
+                                                     status: "delivered")
                             return (index, model)
                         } catch {
                             self.logger.error("failed msg \(meta.messageId): \(error.localizedDescription)")

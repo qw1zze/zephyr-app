@@ -17,9 +17,13 @@ final class MessageModel {
     var timestamp: Date
     var isDecrypted: Bool
     var plaintext: String?
+    var messageType: String?
+    @Attribute(.externalStorage) var imageData: Data?
     var status: String
 
-    init(id: String, chatId: String, senderAddress: String, cid: String, timestamp: Date, isDecrypted: Bool, plaintext: String?, status: String) {
+    init(id: String, chatId: String, senderAddress: String, cid: String, timestamp: Date,
+         isDecrypted: Bool, plaintext: String?, messageType: String? = nil,
+         imageData: Data? = nil, status: String) {
         self.id = id
         self.chatId = chatId
         self.senderAddress = senderAddress
@@ -27,6 +31,8 @@ final class MessageModel {
         self.timestamp = timestamp
         self.isDecrypted = isDecrypted
         self.plaintext = plaintext
+        self.messageType = messageType
+        self.imageData = imageData
         self.status = status
     }
 }
@@ -48,5 +54,9 @@ extension MessageModel {
         default:
             return .pending
         }
+    }
+    
+    var isImageMessage: Bool {
+        messageType == "image"
     }
 }

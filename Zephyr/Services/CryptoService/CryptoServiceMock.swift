@@ -27,15 +27,15 @@ final class CryptoServiceMock: CryptoService {
         
     }
 
-    func computeSharedSecret(myPrivateKey: Data, recipientPublicKey: Data) throws -> Data {
+    func computeSharedSecret(myPrivateKey: Data, recipientPublicKey: Data) async throws -> Data {
         Data(repeating: 0x42, count: 32)
     }
 
-    func encrypt(plaintext: Data, sharedSecret: Data) throws -> Data {
+    func encrypt(plaintext: Data, sharedSecret: Data) async throws -> Data {
         plaintext
     }
 
-    func decrypt(ciphertext: Data, sharedSecret: Data) throws -> Data {
+    func decrypt(ciphertext: Data, sharedSecret: Data) async throws -> Data {
         ciphertext
     }
 }

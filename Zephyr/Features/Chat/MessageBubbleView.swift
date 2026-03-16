@@ -18,7 +18,7 @@ struct MessageBubbleView: View {
             }
             
             VStack(alignment: isOutgoing ? .trailing : .leading, spacing: 4) {
-                messageText
+                messageContent
 
                 messageInfo
             }
@@ -30,14 +30,27 @@ struct MessageBubbleView: View {
         .padding(.horizontal, 8)
     }
     
-    private var messageText: some View {
-        Text(message.plaintext ?? "")
-            .font(.system(size: 16))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(isOutgoing ? Color.blue : Color(.systemGray5))
-            .foregroundColor(isOutgoing ? .white : .primary)
-            .clipShape(RoundedRectangle(cornerRadius: 18))
+    @ViewBuilder
+    private var messageContent: some View {
+        if message.isImageMessage, let data = message.imageData, let uiImage = UIImage(data: data) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: 240)
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18)
+                        .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
+                )
+        } else {
+            Text(message.plaintext ?? "")
+                .font(.system(size: 16))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(isOutgoing ? Color.blue : Color(.systemGray5))
+                .foregroundColor(isOutgoing ? .white : .primary)
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+        }
     }
     
     private var messageInfo: some View {
