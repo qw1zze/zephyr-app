@@ -25,6 +25,7 @@ protocol BlockchainService: AnyObject {
     func getChatCreatedAtBlock(chatId: String) async throws -> UInt64
     func getAnchoredBatches(chatId: String, fromBlock: UInt64, toBlock: UInt64) async throws -> [BatchAnchoredEvent]
     func getLatestBlock() async throws -> UInt64
+    func getUserChats(userAddress: String) async throws -> [String]
 }
 
 enum EthereumError: LocalizedError {

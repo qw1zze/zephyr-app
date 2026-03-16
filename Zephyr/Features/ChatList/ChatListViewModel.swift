@@ -26,6 +26,7 @@ final class ChatListViewModel: ObservableObject {
     @Published private(set) var addressValidation = AddressValidation.idle
     @Published private(set) var isCreatingChat = false
     @Published private(set) var createdChatID: String?
+    @Published private(set) var isRestoringHistory = false
 
     private let container: ServiceContainer
     private let onChatSelected: (String, String) -> Void
@@ -151,6 +152,55 @@ final class ChatListViewModel: ObservableObject {
         } catch {
             self.error = error.localizedDescription
         }
+    }
+
+    func restoreAllChats() {
+        guard !isRestoringHistory else { return }
+        isRestoringHistory = true
+        Task {
+            defer { isRestoringHistory = false }
+            
+            do {
+                let myAddress = (try? container.keychain.load(key: KeychainKeys.address))
+                    .flatMap { String(data: $0, encoding: .utf8) } ?? ""
+
+                let chatIds = try await container.ethereum.getUserChats(userAddress: myAddress)
+
+                for chatId in chatIds {
+                    let recipientAddress = await findRecipient(chatId: chatId, myAddress: myAddress)
+                    guard !recipientAddress.isEmpty else { continue }
+
+                    if !chats.contains(where: { $0.id == chatId }) {
+                        _ = try? container.persistence.createChat(id: chatId, recipientAddress: recipientAddress)
+                    }
+
+                    let recovered = try await container.blockchainRecovery.recover(chatId: chatId, recipientAddress: recipientAddress)
+                    for model in recovered {
+                        try? await container.persistence.saveMessage(model)
+                    }
+                }
+
+                chats = try container.persistence.fetchChats()
+            } catch {
+                self.error = error.localizedDescription
+            }
+        }
+    }
+
+    private func findRecipient(chatId: String, myAddress: String) async -> String {
+        if let existing = chats.first(where: { $0.id == chatId }) {
+            return existing.recipientAddress
+        }
+        do {
+            let startBlock = try await container.ethereum.getChatCreatedAtBlock(chatId: chatId)
+            let latestBlock = try await container.ethereum.getLatestBlock()
+            let toBlock = min(startBlock + 10_000, latestBlock)
+            let events = try await container.ethereum.getAnchoredBatches(chatId: chatId, fromBlock: startBlock, toBlock: toBlock)
+            for event in events where event.sender.lowercased() != myAddress.lowercased() {
+                return event.sender
+            }
+        } catch {}
+        return ""
     }
 
     func resetCreateChat() {

@@ -328,6 +328,24 @@ final class BlockchainServiceInstance: BlockchainService {
         return UUID(uuid: uuidT).uuidString
     }
 
+    func getUserChats(userAddress: String) async throws -> [String] {
+        let web3 = try await web3ReadOnly()
+        let contract = try messageRegistryContract(web3: web3)
+
+        guard let ethAddr = EthereumAddress(userAddress) else {
+            throw EthereumError.contractError("Неверный адрес: \(userAddress)")
+        }
+
+        guard let result = try? await contract
+            .createReadOperation("getUserChats", parameters: [ethAddr] as [AnyObject])?
+            .callContractMethod() else {
+            return []
+        }
+
+        guard let chatIds = result["0"] as? [Data] else { return [] }
+        return chatIds.map { $0.toHexString() }
+    }
+
     func waitForConfirmation(txHash: String) async throws {
         let web3 = try await web3ReadOnly()
         let hashData = Data(hex: txHash)
