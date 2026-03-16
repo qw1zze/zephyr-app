@@ -10,15 +10,25 @@ import SwiftUI
 struct ChatListView: View {
     @ObservedObject var viewModel: ChatListViewModel
     @State private var showCreateChat = false
+    @State private var searchText = ""
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            AppTheme.background.ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                searchBar
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 4)
 
-            if viewModel.chats.isEmpty && !viewModel.isLoading {
-                emptyState
-            } else {
-                chatList
+                if viewModel.chats.isEmpty && !viewModel.isLoading {
+                    Spacer()
+                    emptyState
+                    Spacer()
+                } else {
+                    chatList
+                }
             }
         }
         .navigationTitle("Чаты")
@@ -30,7 +40,7 @@ struct ChatListView: View {
                 } label: {
                     Image(systemName: "square.and.pencil")
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(AppTheme.accent)
                 }
             }
         }
@@ -44,14 +54,28 @@ struct ChatListView: View {
         .preferredColorScheme(.dark)
     }
 
+    private var searchBar: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(AppTheme.textTertiary)
+                .font(.system(size: 15))
+            TextField("Поиск", text: $searchText)
+                .foregroundStyle(AppTheme.textPrimary)
+                .font(.system(size: 15))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: AppTheme.radiusInput))
+    }
+
     private var chatList: some View {
         List {
-            ForEach(viewModel.chats, id: \.id) { chat in
+            ForEach(filteredChats, id: \.id) { chat in
                 ChatRowView(chat: chat) {
                     viewModel.selectChat(chat)
                 }
-                .listRowBackground(Color.black)
-                .listRowSeparatorTint(Color(white: 0.12))
+                .listRowBackground(AppTheme.background)
+                .listRowSeparatorTint(AppTheme.separator)
             }
         }
         .listStyle(.plain)
@@ -63,11 +87,18 @@ struct ChatListView: View {
         VStack(spacing: 12) {
             Image(systemName: "bubble.left.and.bubble.right")
                 .font(.system(size: 48))
-                .foregroundStyle(Color(white: 0.2))
+                .foregroundStyle(AppTheme.surface)
             Text("Нет чатов. Нажмите + чтобы начать")
                 .font(.system(size: 15))
-                .foregroundStyle(Color(white: 0.35))
+                .foregroundStyle(AppTheme.textTertiary)
                 .multilineTextAlignment(.center)
+        }
+    }
+    
+    private var filteredChats: [ChatModel] {
+        guard !searchText.isEmpty else { return viewModel.chats }
+        return viewModel.chats.filter {
+            $0.recipientAddress.localizedCaseInsensitiveContains(searchText)
         }
     }
 }

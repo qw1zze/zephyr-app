@@ -12,7 +12,7 @@ struct PublishKeyView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            AppTheme.background.ignoresSafeArea()
             content
         }
         .navigationBarBackButtonHidden(true)
@@ -56,18 +56,18 @@ struct PublishKeyView: View {
         VStack(spacing: 20) {
             ProgressView()
                 .scaleEffect(1.4)
-                .tint(Color(white: 0.6))
+                .tint(AppTheme.accent)
 
             VStack(spacing: 8) {
                 Text(label)
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppTheme.textPrimary)
                     .multilineTextAlignment(.center)
 
                 if let subtitle {
                     Text(subtitle)
                         .font(.system(size: 13))
-                        .foregroundStyle(Color(white: 0.45))
+                        .foregroundStyle(AppTheme.textSecondary)
                         .multilineTextAlignment(.center)
                 }
             }
@@ -82,16 +82,16 @@ struct PublishKeyView: View {
             VStack(spacing: 24) {
                 ZStack {
                     Circle()
-                        .fill(Color(white: 0.1))
+                        .fill(AppTheme.accent.opacity(0.15))
                         .frame(width: 88, height: 88)
                     Image(systemName: "checkmark")
                         .font(.system(size: 36, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(AppTheme.accent)
                 }
 
                 Text(label)
                     .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppTheme.textPrimary)
             }
 
             Spacer()
@@ -102,7 +102,7 @@ struct PublishKeyView: View {
                     .foregroundStyle(.black)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(Color.white, in: RoundedRectangle(cornerRadius: 14))
+                    .background(AppTheme.accent, in: RoundedRectangle(cornerRadius: AppTheme.radiusPill))
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 48)
@@ -126,11 +126,11 @@ struct PublishKeyView: View {
                 VStack(spacing: 8) {
                     Text("Ошибка публикации")
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(AppTheme.textPrimary)
 
                     Text(message)
                         .font(.system(size: 13))
-                        .foregroundStyle(Color(white: 0.5))
+                        .foregroundStyle(AppTheme.textSecondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 32)
                 }
@@ -143,12 +143,12 @@ struct PublishKeyView: View {
             } label: {
                 Text("Повторить")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppTheme.textPrimary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(Color(white: 0.25), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: AppTheme.radiusPill)
+                            .stroke(Color(white: 0.3), lineWidth: 1)
                     )
             }
             .padding(.horizontal, 24)

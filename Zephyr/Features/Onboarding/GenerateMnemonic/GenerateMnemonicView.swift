@@ -14,7 +14,7 @@ struct GenerateMnemonicView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            AppTheme.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 warningBanner
@@ -24,7 +24,7 @@ struct GenerateMnemonicView: View {
                 if viewModel.isLoading {
                     Spacer()
                     ProgressView()
-                        .tint(.white)
+                        .tint(AppTheme.accent)
                     Spacer()
                 } else {
                     wordGrid
@@ -109,12 +109,12 @@ struct GenerateMnemonicView: View {
         Button(action: viewModel.didTapContinue) {
             Text("Продолжить")
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(viewModel.canContinue ? .black : Color(white: 0.35))
+                .foregroundStyle(viewModel.canContinue ? .black : AppTheme.textTertiary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background(
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(viewModel.canContinue ? Color.white : Color(white: 0.15))
+                    RoundedRectangle(cornerRadius: AppTheme.radiusPill)
+                        .fill(viewModel.canContinue ? AppTheme.accent : AppTheme.surface)
                 )
         }
         .disabled(!viewModel.canContinue)

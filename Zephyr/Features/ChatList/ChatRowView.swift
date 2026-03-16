@@ -33,12 +33,12 @@ extension ChatListView {
         
         private var avatar: some View {
             Circle()
-                .fill(Color(white: 0.15))
-                .frame(width: 46, height: 46)
+                .fill(AppTheme.surface)
+                .frame(width: 50, height: 50)
                 .overlay {
                     Image(systemName: "person.fill")
-                        .font(.system(size: 20))
-                        .foregroundStyle(Color(white: 0.45))
+                        .font(.system(size: 22))
+                        .foregroundStyle(AppTheme.textSecondary)
                 }
         }
         
@@ -46,12 +46,12 @@ extension ChatListView {
             VStack(alignment: .leading, spacing: 4) {
                 Text(shortAddress(chat.recipientAddress))
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppTheme.textPrimary)
 
                 if let preview = chat.lastMessagePreview {
                     Text(preview)
                         .font(.system(size: 13))
-                        .foregroundStyle(Color(white: 0.45))
+                        .foregroundStyle(AppTheme.textSecondary)
                         .lineLimit(1)
                 }
             }
@@ -60,7 +60,7 @@ extension ChatListView {
         private func chatDate(date: Date) -> some View {
             Text(formattedDate(date))
                 .font(.system(size: 12))
-                .foregroundStyle(Color(white: 0.35))
+                .foregroundStyle(AppTheme.textTertiary)
         }
 
         private func shortAddress(_ address: String) -> String {

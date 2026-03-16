@@ -22,35 +22,40 @@ extension ChatView {
                 sendButton
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Color(.systemBackground))
-            .shadow(color: .black.opacity(0.05), radius: 4, y: -2)
+            .padding(.vertical, 10)
+            .background(AppTheme.background)
         }
 
         private var imageButton: some View {
             Button(action: onPickImage) {
                 Image(systemName: "photo")
-                    .font(.system(size: 24))
-                    .foregroundColor(.blue)
+                    .font(.system(size: 22))
+                    .foregroundColor(AppTheme.textSecondary)
             }
         }
 
         private var messageField: some View {
             TextField("Сообщение", text: $text, axis: .vertical)
                 .lineLimit(1...5)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Color(.systemGray6))
-                .clipShape(RoundedRectangle(cornerRadius: 20))
+                .foregroundStyle(AppTheme.textPrimary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 9)
+                .background(AppTheme.surface)
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.radiusInput))
         }
-        
+
         private var sendButton: some View {
-            Button(action: onSend) {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 32))
-                    .foregroundColor(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .gray : .blue)
+            let canSend = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            return Button(action: onSend) {
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(.black)
+                    .frame(width: 34, height: 34)
+                    .background(canSend ? AppTheme.accent : AppTheme.surfaceHigh)
+                    .clipShape(Circle())
             }
-            .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .disabled(!canSend)
+            .animation(.easeInOut(duration: 0.15), value: canSend)
         }
     }
 }

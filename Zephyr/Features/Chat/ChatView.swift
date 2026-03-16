@@ -24,7 +24,7 @@ struct ChatView: View {
                 isPickerPresented = true
             })
         }
-        .background(Color.black.ignoresSafeArea())
+        .background(AppTheme.background.ignoresSafeArea())
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
             keyboardTrigger += 1
         }
@@ -91,7 +91,7 @@ struct ChatView: View {
                 viewModel.recoverFromBlockchain()
             } label: {
                 Image(systemName: "arrow.clockwise.icloud")
-                    .foregroundColor(.white)
+                    .foregroundColor(AppTheme.accent)
             }
         }
     }
@@ -158,7 +158,7 @@ struct ChatView: View {
             .foregroundColor(.secondary)
             .padding(.horizontal, 12)
             .padding(.vertical, 4)
-            .background(Color(.systemGray5).opacity(0.6))
+            .background(AppTheme.surface.opacity(0.8))
             .clipShape(Capsule())
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
