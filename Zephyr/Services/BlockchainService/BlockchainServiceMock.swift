@@ -40,4 +40,8 @@ final class BlockchainServiceMock: BlockchainService {
     func getLatestBlock() async throws -> UInt64 {
         return 0
     }
+    
+    func getUserChats(userAddress: String) async throws -> [String] {
+        return []
+    }
 }

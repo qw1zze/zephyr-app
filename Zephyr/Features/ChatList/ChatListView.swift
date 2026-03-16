@@ -34,14 +34,11 @@ struct ChatListView: View {
         .navigationTitle("Чаты")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                restoreButton
+            }
             ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showCreateChat = true
-                } label: {
-                    Image(systemName: "square.and.pencil")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(AppTheme.accent)
-                }
+                createButton
             }
         }
         .sheet(isPresented: $showCreateChat) {
@@ -52,6 +49,32 @@ struct ChatListView: View {
             viewModel.startListen()
         }
         .preferredColorScheme(.dark)
+    }
+    
+    private var restoreButton: some View {
+        Button {
+            viewModel.restoreAllChats()
+        } label: {
+            if viewModel.isRestoringHistory {
+                ProgressView()
+                    .tint(AppTheme.accent)
+            } else {
+                Image(systemName: "arrow.counterclockwise.icloud")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(AppTheme.accent)
+            }
+        }
+        .disabled(viewModel.isRestoringHistory)
+    }
+    
+    private var createButton: some View {
+        Button {
+            showCreateChat = true
+        } label: {
+            Image(systemName: "square.and.pencil")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(AppTheme.accent)
+        }
     }
 
     private var searchBar: some View {

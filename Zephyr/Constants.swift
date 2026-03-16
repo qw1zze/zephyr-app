@@ -48,6 +48,13 @@ enum Constants {
         "stateMutability": "view"
       },
       {
+        "name": "getUserChats",
+        "type": "function",
+        "inputs": [{"name": "user", "type": "address"}],
+        "outputs": [{"name": "", "type": "bytes32[]"}],
+        "stateMutability": "view"
+      },
+      {
         "name": "BatchAnchored",
         "type": "event",
         "inputs": [

@@ -131,6 +131,8 @@ struct ChatView: View {
                 .padding(.vertical, 8)
             }
             .frame(maxHeight: .infinity)
+            .scrollIndicators(.hidden)
+            .defaultScrollAnchor(.bottom)
             .simultaneousGesture(
                 TapGesture().onEnded { _ in
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
