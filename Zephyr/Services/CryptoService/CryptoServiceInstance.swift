@@ -62,28 +62,51 @@ final class CryptoServiceInstance: CryptoService {
         }
     }
 
-    func computeSharedSecret(myPrivateKey: Data, recipientPublicKey: Data) throws -> Data {
-        let privateKey = try secp256k1.KeyAgreement.PrivateKey(rawRepresentation: myPrivateKey)
-        let publicKey = try secp256k1.KeyAgreement.PublicKey(rawRepresentation: recipientPublicKey, format: .uncompressed)
-        let shared = try privateKey.sharedSecretFromKeyAgreement(with: publicKey)
-        return shared.withUnsafeBytes { Data($0) }
+    func computeSharedSecret(myPrivateKey: Data, recipientPublicKey: Data) async throws -> Data {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    let privateKey = try secp256k1.KeyAgreement.PrivateKey(rawRepresentation: myPrivateKey)
+                    let publicKey = try secp256k1.KeyAgreement.PublicKey(rawRepresentation: recipientPublicKey, format: .uncompressed)
+                    let shared = try privateKey.sharedSecretFromKeyAgreement(with: publicKey)
+                    continuation.resume(returning: shared.withUnsafeBytes { Data($0) })
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
     }
 
-    func encrypt(plaintext: Data, sharedSecret: Data) throws -> Data {
-        let nonce = AES.randomIV(12)
-        let aes = try AES(key: sharedSecret.bytes, blockMode: GCM(iv: nonce, mode: .combined), padding: .noPadding)
-        let encrypted = try aes.encrypt(plaintext.bytes)
-        var result = Data(nonce)
-        result.append(Data(encrypted))
-        return result
+    func encrypt(plaintext: Data, sharedSecret: Data) async throws -> Data {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    let nonce = AES.randomIV(12)
+                    let aes = try AES(key: sharedSecret.bytes, blockMode: GCM(iv: nonce, mode: .combined), padding: .noPadding)
+                    let encrypted = try aes.encrypt(plaintext.bytes)
+                    var result = Data(nonce)
+                    result.append(Data(encrypted))
+                    continuation.resume(returning: result)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
     }
 
-    func decrypt(ciphertext: Data, sharedSecret: Data) throws -> Data {
-        guard ciphertext.count > 12 else { throw CryptoError.invalidCiphertext }
-        
-        let gcm = GCM(iv: Array(ciphertext.prefix(12)), mode: .combined)
-        let aes = try AES(key: sharedSecret.bytes, blockMode: gcm, padding: .noPadding)
-        let decrypted = try aes.decrypt(Array(ciphertext.dropFirst(12)))
-        return Data(decrypted)
+    func decrypt(ciphertext: Data, sharedSecret: Data) async throws -> Data {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    guard ciphertext.count > 12 else { throw CryptoError.invalidCiphertext }
+                    let gcm = GCM(iv: Array(ciphertext.prefix(12)), mode: .combined)
+                    let aes = try AES(key: sharedSecret.bytes, blockMode: gcm, padding: .noPadding)
+                    let decrypted = try aes.decrypt(Array(ciphertext.dropFirst(12)))
+                    continuation.resume(returning: Data(decrypted))
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
     }
 }

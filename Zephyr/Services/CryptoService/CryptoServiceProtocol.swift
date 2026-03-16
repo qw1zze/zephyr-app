@@ -18,9 +18,9 @@ protocol CryptoService: AnyObject {
     func deriveWallet(from words: [String]) throws -> WalletKeys
     func isValidWord(_ word: String) -> Bool
     func validateMnemonic(_ words: [String]) throws
-    func computeSharedSecret(myPrivateKey: Data, recipientPublicKey: Data) throws -> Data
-    func encrypt(plaintext: Data, sharedSecret: Data) throws -> Data
-    func decrypt(ciphertext: Data, sharedSecret: Data) throws -> Data
+    func computeSharedSecret(myPrivateKey: Data, recipientPublicKey: Data) async throws -> Data
+    func encrypt(plaintext: Data, sharedSecret: Data) async throws -> Data
+    func decrypt(ciphertext: Data, sharedSecret: Data) async throws -> Data
 }
 
 enum CryptoError: LocalizedError {

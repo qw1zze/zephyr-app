@@ -6,18 +6,23 @@
 //
 
 import SwiftUI
+import PhotosUI
 
 struct ChatView: View {
     @ObservedObject var viewModel: ChatViewModel
     @State private var keyboardTrigger: Int = 0
+    @State private var isPickerPresented = false
+    @State private var selectedPhotoItem: PhotosPickerItem? = nil
 
     var body: some View {
         VStack(spacing: 0) {
             messageList(keyboardTrigger: keyboardTrigger)
 
-            InputBarView(text: $viewModel.inputText) {
+            InputBarView(text: $viewModel.inputText, onSend: {
                 Task { await viewModel.sendMessage() }
-            }
+            }, onPickImage: {
+                isPickerPresented = true
+            })
         }
         .background(Color.black.ignoresSafeArea())
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
@@ -37,6 +42,16 @@ struct ChatView: View {
         .alert(recoveryAlertTitle, isPresented: .constant(isRecoveryAlertPresented)) {
             Button("OK") {
                 viewModel.dismissRecoveryAlert()
+            }
+        }
+        .photosPicker(isPresented: $isPickerPresented, selection: $selectedPhotoItem, matching: .images)
+        .onChange(of: selectedPhotoItem) { _, newItem in
+            guard let newItem else { return }
+            Task {
+                if let data = try? await newItem.loadTransferable(type: Data.self) {
+                    await viewModel.sendImage(data)
+                }
+                selectedPhotoItem = nil
             }
         }
         .task {

@@ -17,6 +17,12 @@ struct SentMessage {
     let timestamp: Date
 }
 
+struct DecryptedMessage {
+    let messageType: String
+    let text: String?
+    let imageData: Data?
+}
+
 enum MessageSenderError: Error, LocalizedError {
     case recipientKeyNotFound
     case senderAddressCorrupted
@@ -50,9 +56,47 @@ actor MessageSender {
     }
 
     func send(messageId: String, text: String, chatId: String, recipientAddress: String) async throws -> SentMessage {
+        let payload = await MessagePayload.makeText(text)
+        return try await sendPayload(messageId: messageId, payload: payload, chatId: chatId, recipientAddress: recipientAddress)
+    }
+
+    func sendImage(messageId: String, imageData: Data, chatId: String, recipientAddress: String) async throws -> SentMessage {
+        let payload = await MessagePayload.makeImage(imageData)
+        return try await sendPayload(messageId: messageId, payload: payload, chatId: chatId, recipientAddress: recipientAddress)
+    }
+
+    func decrypt(envelope: Envelope) async throws -> DecryptedMessage {
         let privateKey = try await keychain.load(key: KeychainKeys.privateKey)
-        let addressData  = try await keychain.load(key: KeychainKeys.address)
-        
+
+        let ciphertext = try await storage.download(cid: envelope.cid)
+
+        var plainTextData = Data()
+        do {
+            guard let recipientPublicKey = try await ethereum.getPublicKey(address: envelope.recipientAddr) else {
+                throw MessageSenderError.recipientKeyNotFound
+            }
+            let sharedSecret = try await crypto.computeSharedSecret(myPrivateKey: privateKey, recipientPublicKey: recipientPublicKey)
+            plainTextData = try await crypto.decrypt(ciphertext: ciphertext, sharedSecret: sharedSecret)
+        } catch {
+            do {
+                guard let senderPublicKey = try await ethereum.getPublicKey(address: envelope.senderAddr) else {
+                    throw MessageSenderError.recipientKeyNotFound
+                }
+                let sharedSecret = try await crypto.computeSharedSecret(myPrivateKey: privateKey, recipientPublicKey: senderPublicKey)
+                plainTextData = try await crypto.decrypt(ciphertext: ciphertext, sharedSecret: sharedSecret)
+            } catch {
+                throw MessageSenderError.senderAddressCorrupted
+            }
+        }
+
+        logger.info("Decrypted message \(envelope.messageId)")
+        return parseDecryptedData(plainTextData)
+    }
+
+    private func sendPayload(messageId: String, payload: MessagePayload, chatId: String, recipientAddress: String) async throws -> SentMessage {
+        let privateKey = try await keychain.load(key: KeychainKeys.privateKey)
+        let addressData = try await keychain.load(key: KeychainKeys.address)
+
         guard let myAddress = String(data: addressData, encoding: .utf8) else {
             throw MessageSenderError.senderAddressCorrupted
         }
@@ -62,9 +106,8 @@ actor MessageSender {
         }
 
         let sharedSecret = try await crypto.computeSharedSecret(myPrivateKey: privateKey, recipientPublicKey: recipientPublicKey)
-
-        let plaintext  = text.data(using: .utf8) ?? Data()
-        let ciphertext = try await crypto.encrypt(plaintext: plaintext, sharedSecret: sharedSecret)
+        let payloadData = (try? JSONEncoder().encode(payload)) ?? Data()
+        let ciphertext = try await crypto.encrypt(plaintext: payloadData, sharedSecret: sharedSecret)
 
         let cid = try await storage.upload(data: ciphertext)
         logger.info("Uploaded CID \(cid) for message \(messageId)")
@@ -91,51 +134,32 @@ actor MessageSender {
         return SentMessage(messageId: messageId, cid: cid, timestamp: timestamp)
     }
 
-    func decrypt(envelope: Envelope) async throws -> String {
-        let privateKey = try await keychain.load(key: KeychainKeys.privateKey)
-
-        let ciphertext = try await storage.download(cid: envelope.cid)
-
-        guard let senderPublicKey = try await ethereum.getPublicKey(address: envelope.recipientAddr) else {
-            throw MessageSenderError.recipientKeyNotFound
-        }
-
-        var plainTextData = Data()
-        do {
-            let sharedSecret = try await crypto.computeSharedSecret(myPrivateKey: privateKey, recipientPublicKey: senderPublicKey)
-            plainTextData = try await crypto.decrypt(ciphertext: ciphertext, sharedSecret: sharedSecret)
-        } catch {
-            do {
-                guard let senderPublicKey = try await ethereum.getPublicKey(address: envelope.senderAddr) else {
-                    throw MessageSenderError.recipientKeyNotFound
-                }
-                
-                let sharedSecret = try await crypto.computeSharedSecret(myPrivateKey: privateKey, recipientPublicKey: senderPublicKey)
-                plainTextData = try await crypto.decrypt(ciphertext: ciphertext, sharedSecret: sharedSecret)
-            } catch {
-                throw MessageSenderError.senderAddressCorrupted
+    private func parseDecryptedData(_ data: Data) -> DecryptedMessage {
+        if let payload = try? JSONDecoder().decode(MessagePayload.self, from: data) {
+            switch payload.type {
+            case "image":
+                return DecryptedMessage(messageType: "image", text: nil, imageData: payload.imageData)
+            default:
+                return DecryptedMessage(messageType: "text", text: payload.text, imageData: nil)
             }
         }
         
-        guard let text = String(data: plainTextData, encoding: .utf8) else {
-            throw MessageSenderError.senderAddressCorrupted
-        }
-
-        logger.info("Decrypted message \(envelope.messageId)")
-        return text
+        let text = String(data: data, encoding: .utf8) ?? ""
+        return DecryptedMessage(messageType: "text", text: text, imageData: nil)
     }
 
     private func signEIP191(message: String, privateKey: Data) throws -> String {
         let messageData = message.data(using: .utf8) ?? Data()
-        
-        guard let keystore = try? EthereumKeystoreV3(privateKey: privateKey, password: ""), let account  = keystore.addresses?.first else {
+
+        guard let keystore = try? EthereumKeystoreV3(privateKey: privateKey, password: ""),
+              let account = keystore.addresses?.first else {
             throw MessageSenderError.senderAddressCorrupted
         }
-        
-        guard let sig = try Web3Signer.signPersonalMessage(messageData, keystore: keystore, account:  account, password: "") else {
+
+        guard let sig = try Web3Signer.signPersonalMessage(messageData, keystore: keystore, account: account, password: "") else {
             throw MessageSenderError.senderAddressCorrupted
         }
-        
+
         return "0x" + sig.toHexString()
     }
 }

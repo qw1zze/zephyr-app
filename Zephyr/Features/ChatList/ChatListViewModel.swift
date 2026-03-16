@@ -136,24 +136,16 @@ final class ChatListViewModel: ObservableObject {
                 _ = try container.persistence.createChat(id: envelope.chatId, recipientAddress: envelope.senderAddr)
             }
 
-            let plaintext: String? = try? await container.messageSender.decrypt(envelope: envelope)
+            let decrypted: DecryptedMessage? = try? await container.messageSender.decrypt(envelope: envelope)
             let messageTimestamp = Date(timeIntervalSince1970: TimeInterval(envelope.timestamp))
-            let message = MessageModel(
-                id: envelope.messageId,
-                chatId: envelope.chatId,
-                senderAddress: envelope.senderAddr,
-                cid: envelope.cid,
-                timestamp: messageTimestamp,
-                isDecrypted: plaintext != nil,
-                plaintext: plaintext,
-                status: "delivered"
-            )
-            
+            let message = MessageModel(id: envelope.messageId, chatId: envelope.chatId, senderAddress: envelope.senderAddr,
+                                       cid: envelope.cid, timestamp: messageTimestamp, isDecrypted: decrypted != nil, plaintext: decrypted?.text,
+                                       messageType: decrypted?.messageType, imageData: decrypted?.imageData, status: "delivered")
+
             try await container.persistence.saveMessage(message)
 
-            if let plaintext {
-                try await container.persistence.updateChatLastMessage(chatId: envelope.chatId, text: plaintext, date: messageTimestamp)
-            }
+            let preview = decrypted?.messageType == "image" ? "Изображение" : (decrypted?.text ?? "")
+            try await container.persistence.updateChatLastMessage(chatId: envelope.chatId, text: preview, date: messageTimestamp)
 
             chats = try container.persistence.fetchChats()
         } catch {
