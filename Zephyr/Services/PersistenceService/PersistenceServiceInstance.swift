@@ -147,4 +147,10 @@ final class PersistenceServiceInstance: PersistenceService {
         chat.lastMessageDate = date
         try context.save()
     }
+
+    func deleteAllData() throws {
+        try context.delete(model: MessageModel.self)
+        try context.delete(model: ChatModel.self)
+        try context.save()
+    }
 }

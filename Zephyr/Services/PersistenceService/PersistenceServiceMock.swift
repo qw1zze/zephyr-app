@@ -70,4 +70,9 @@ final class PersistenceServiceMock: PersistenceService {
         chat.lastMessagePreview = text
         chat.lastMessageDate = date
     }
+
+    func deleteAllData() throws {
+        chats.removeAll()
+        messages.removeAll()
+    }
 }

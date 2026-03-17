@@ -18,6 +18,7 @@ protocol PersistenceService: AnyObject {
     func messageExists(id: String) throws -> Bool
     func saveMessage(_ message: MessageModel) async throws
     func updateChatLastMessage(chatId: String, text: String, date: Date) async throws
+    func deleteAllData() throws
 }
 
 enum PersistenceError: LocalizedError {

@@ -30,4 +30,8 @@ final class AppCoordinator: ObservableObject {
     func showOnboarding() {
         currentRoute = .onboarding
     }
+
+    func logout() {
+        currentRoute = .onboarding
+    }
 }
