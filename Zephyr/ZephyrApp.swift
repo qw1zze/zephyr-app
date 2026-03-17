@@ -9,9 +9,154 @@ import SwiftUI
 
 @main
 struct ZephyrApp: App {
+    @StateObject private var appCoordinator = AppCoordinator()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            AppRootView(coordinator: appCoordinator)
+        }
+    }
+}
+
+struct AppRootView: View {
+    @ObservedObject var coordinator: AppCoordinator
+
+    var body: some View {
+        switch coordinator.currentRoute {
+        case .onboarding:
+            OnboardingCoordinatorView(
+                container: coordinator.container,
+                onComplete: coordinator.handleOnboardingComplete
+            )
+        case .chatList:
+            MainTabView(
+                container: coordinator.container,
+                onLogout: coordinator.logout
+            )
+        case .none:
+            EmptyView()
+        }
+    }
+}
+
+
+struct MainTabView: View {
+    let container: ServiceContainer
+    let onLogout: () -> Void
+
+    @State private var selectedTab = 0
+    @State private var tabBarVisible = true
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            ChatListCoordinatorView(container: container, tabBarVisible: $tabBarVisible)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .opacity(selectedTab == 0 ? 1 : 0)
+                .allowsHitTesting(selectedTab == 0)
+
+            SettingsCoordinatorView(container: container, onLogout: onLogout)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .opacity(selectedTab == 1 ? 1 : 0)
+                .allowsHitTesting(selectedTab == 1)
+
+            if tabBarVisible {
+                CustomTabBar(selectedTab: $selectedTab)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .ignoresSafeArea(edges: .bottom)
+        .preferredColorScheme(.dark)
+    }
+}
+
+struct CustomTabBar: View {
+    @Binding var selectedTab: Int
+
+    var body: some View {
+        HStack(spacing: 0) {
+            tabItem(icon: "bubble.left.and.bubble.right.fill", label: "Чаты", index: 0)
+            tabItem(icon: "gearshape.fill", label: "Настройки", index: 1)
+        }
+        .padding(.top, 12)
+        .padding(.bottom, 28)
+        .background(.black)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(AppTheme.separator)
+                .frame(height: 0.5)
+        }
+    }
+
+    private func tabItem(icon: String, label: String, index: Int) -> some View {
+        Button {
+            selectedTab = index
+        } label: {
+            VStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 22))
+                Text(label)
+                    .font(.system(size: 10, weight: .medium))
+            }
+            .foregroundStyle(selectedTab == index ? AppTheme.accent : AppTheme.textTertiary)
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct ChatListCoordinatorView: View {
+    @StateObject private var coordinator: ChatListCoordinator
+    @Binding var tabBarVisible: Bool
+
+    init(container: ServiceContainer, tabBarVisible: Binding<Bool>) {
+        _coordinator = StateObject(wrappedValue: ChatListCoordinator(container: container))
+        _tabBarVisible = tabBarVisible
+    }
+
+    var body: some View {
+        NavigationStack(path: $coordinator.path) {
+            coordinator.makeChatListView()
+                .navigationDestination(for: ChatListCoordinator.Route.self) { route in
+                    coordinator.view(for: route)
+                }
+        }
+        .onChange(of: coordinator.path.isEmpty) { _, isEmpty in
+            withAnimation(.easeInOut(duration: 0.3)) {
+                tabBarVisible = isEmpty
+            }
+        }
+    }
+}
+
+struct SettingsCoordinatorView: View {
+    let container: ServiceContainer
+    let onLogout: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            SettingsView(
+                viewModel: SettingsViewModel(container: container, onLogout: onLogout)
+            )
+        }
+    }
+}
+
+struct OnboardingCoordinatorView: View {
+    @StateObject private var coordinator: OnboardingCoordinator
+
+    init(container: ServiceContainer, onComplete: @escaping () -> Void) {
+        _coordinator = StateObject(
+            wrappedValue: OnboardingCoordinator(container: container, onComplete: onComplete)
+        )
+    }
+
+    var body: some View {
+        NavigationStack(path: $coordinator.path) {
+            coordinator.makeWelcomeView()
+                .navigationDestination(for: OnboardingCoordinator.Route.self) { route in
+                    coordinator.view(for: route)
+                }
         }
     }
 }

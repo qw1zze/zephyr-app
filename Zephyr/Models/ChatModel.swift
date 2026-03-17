@@ -1,0 +1,28 @@
+//
+//  ChatModel.swift
+//  Zephyr
+//
+//  Created by Dmitriy Kalyakin on 14/3/26.
+//
+
+import Foundation
+import SwiftData
+
+@Model
+final class ChatModel {
+    var id: String
+    var recipientAddress: String
+    var createdAt: Date
+    var lastMessageDate: Date?
+    var lastMessagePreview: String?
+    var isRegisteredOnChain: Bool
+
+    init(id: String, recipientAddress: String) {
+        self.id = id
+        self.recipientAddress = recipientAddress
+        self.createdAt = Date()
+        self.lastMessageDate = nil
+        self.lastMessagePreview = nil
+        self.isRegisteredOnChain = false
+    }
+}
