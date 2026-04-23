@@ -108,20 +108,23 @@ final class BlockchainServiceInstance: BlockchainService {
         }
     }
 
-    func createChat(chatId: String, recipientAddress: String) async throws -> String {
+    func createChat(chatId: String, recipientAddresses: [String]) async throws -> String {
         let web3 = try await web3WithSigner()
         let from = try userAddress()
         let contract = try messageRegistryContract(web3: web3)
 
-        guard let recipient = EthereumAddress(recipientAddress) else {
-            throw EthereumError.contractError("Неверный адрес получателя: \(recipientAddress)")
+        let recipients: [EthereumAddress] = try recipientAddresses.map { addr in
+            guard let eth = EthereumAddress(addr) else {
+                throw EthereumError.contractError("Неверный адрес получателя: \(addr)")
+            }
+            return eth
         }
 
         let chatIdBytes = Data(hex: chatId)
 
         guard let write = contract.createWriteOperation(
             "createChat",
-            parameters: [chatIdBytes, recipient] as [AnyObject]
+            parameters: [chatIdBytes, recipients] as [AnyObject]
         ) else {
             throw EthereumError.contractError("Не удалось создать транзакцию createChat")
         }
@@ -145,6 +148,21 @@ final class BlockchainServiceInstance: BlockchainService {
             if isAlreadyKnown(error) { return "" }
             throw error
         }
+    }
+
+    func getChatParticipants(chatId: String) async throws -> [String] {
+        let web3 = try await web3ReadOnly()
+        let contract = try messageRegistryContract(web3: web3)
+        let chatIdBytes = bytes32(hex: chatId)
+
+        guard let result = try? await contract
+            .createReadOperation("getChatParticipants", parameters: [chatIdBytes] as [AnyObject])?
+            .callContractMethod() else {
+            return []
+        }
+
+        guard let addresses = result["0"] as? [EthereumAddress] else { return [] }
+        return addresses.map { $0.address }
     }
 
     func anchorBatch(chatId: String, messageIds: [String], cids: [String], timestamps: [Int64]) async throws -> String {

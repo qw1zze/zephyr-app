@@ -37,6 +37,23 @@ final class PersistenceServiceMock: PersistenceService {
         return chat
     }
 
+    func createChat(id: String, participantAddresses: [String]) throws -> ChatModel {
+        if let existing = chats.first(where: { $0.id == id }) {
+            if existing.participantAddresses.count < 2 && participantAddresses.count >= 2 {
+                existing.participantAddresses = participantAddresses
+                existing.recipientAddress = participantAddresses.first ?? existing.recipientAddress
+            }
+            
+            return existing
+        }
+        
+        let primary = participantAddresses.first ?? ""
+        let chat = ChatModel(id: id, recipientAddress: primary, participantAddresses: participantAddresses)
+        chats.append(chat)
+        
+        return chat
+    }
+
     func chat(forAddress address: String) throws -> ChatModel? {
         chats.first { $0.recipientAddress == address }
     }
@@ -69,6 +86,11 @@ final class PersistenceServiceMock: PersistenceService {
         guard let chat = chats.first(where: { $0.id == chatId }) else { return }
         chat.lastMessagePreview = text
         chat.lastMessageDate = date
+    }
+
+    func deleteChat(chatId: String) throws {
+        chats.removeAll { $0.id == chatId }
+        messages.removeAll { $0.chatId == chatId }
     }
 
     func deleteAllData() throws {

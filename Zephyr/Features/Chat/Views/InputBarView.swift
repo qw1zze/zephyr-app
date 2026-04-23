@@ -12,10 +12,13 @@ extension ChatView {
         @Binding var text: String
         let onSend: () -> Void
         let onPickImage: () -> Void
+        let onPickFile: () -> Void
+
+        @State private var showAttachmentMenu = false
 
         var body: some View {
             HStack(alignment: .bottom, spacing: 8) {
-                imageButton
+                attachmentButton
 
                 messageField
 
@@ -26,11 +29,16 @@ extension ChatView {
             .background(AppTheme.background)
         }
 
-        private var imageButton: some View {
-            Button(action: onPickImage) {
-                Image(systemName: "photo")
+        private var attachmentButton: some View {
+            Button(action: { showAttachmentMenu = true }) {
+                Image(systemName: "paperclip")
                     .font(.system(size: 22))
                     .foregroundColor(AppTheme.textSecondary)
+            }
+            .confirmationDialog("", isPresented: $showAttachmentMenu) {
+                Button("Изображение") { onPickImage() }
+                Button("Файл") { onPickFile() }
+                Button("Отмена", role: .cancel) {}
             }
         }
 

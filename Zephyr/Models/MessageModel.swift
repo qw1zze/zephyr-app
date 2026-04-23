@@ -19,11 +19,12 @@ final class MessageModel {
     var plaintext: String?
     var messageType: String?
     @Attribute(.externalStorage) var imageData: Data?
+    var fileName: String?
     var status: String
 
     init(id: String, chatId: String, senderAddress: String, cid: String, timestamp: Date,
          isDecrypted: Bool, plaintext: String?, messageType: String? = nil,
-         imageData: Data? = nil, status: String) {
+         imageData: Data? = nil, fileName: String? = nil, status: String) {
         self.id = id
         self.chatId = chatId
         self.senderAddress = senderAddress
@@ -33,6 +34,7 @@ final class MessageModel {
         self.plaintext = plaintext
         self.messageType = messageType
         self.imageData = imageData
+        self.fileName = fileName
         self.status = status
     }
 }
@@ -43,14 +45,17 @@ extension MessageModel {
         case pending
         case sent
         case delivered
+        case failed
     }
-    
+
     var messageStatus: MessageStatus {
         switch status {
         case "sent":
             return .sent
         case "delivered":
             return .delivered
+        case "failed":
+            return .failed
         default:
             return .pending
         }
@@ -58,5 +63,9 @@ extension MessageModel {
     
     var isImageMessage: Bool {
         messageType == "image"
+    }
+
+    var isFileMessage: Bool {
+        messageType == "file"
     }
 }

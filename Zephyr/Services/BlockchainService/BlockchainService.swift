@@ -20,7 +20,8 @@ protocol BlockchainService: AnyObject {
     func getPublicKey(address: String) async throws -> Data?
     func publishPublicKey(_ publicKey: Data) async throws -> String
     func waitForConfirmation(txHash: String) async throws
-    func createChat(chatId: String, recipientAddress: String) async throws -> String
+    func createChat(chatId: String, recipientAddresses: [String]) async throws -> String
+    func getChatParticipants(chatId: String) async throws -> [String]
     func anchorBatch(chatId: String, messageIds: [String], cids: [String], timestamps: [Int64]) async throws -> String
     func getChatCreatedAtBlock(chatId: String) async throws -> UInt64
     func getAnchoredBatches(chatId: String, fromBlock: UInt64, toBlock: UInt64) async throws -> [BatchAnchoredEvent]

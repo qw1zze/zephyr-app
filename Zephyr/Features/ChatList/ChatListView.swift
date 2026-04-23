@@ -97,13 +97,19 @@ struct ChatListView: View {
                 ChatRowView(chat: chat) {
                     viewModel.selectChat(chat)
                 }
+                .contextMenu {
+                    Button(role: .destructive) {
+                        viewModel.deleteChat(chat)
+                    } label: {
+                        Label("Удалить чат", systemImage: "trash")
+                    }
+                }
                 .listRowBackground(AppTheme.background)
                 .listRowSeparatorTint(AppTheme.separator)
             }
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .refreshable { await viewModel.refresh() }
     }
 
     private var emptyState: some View {

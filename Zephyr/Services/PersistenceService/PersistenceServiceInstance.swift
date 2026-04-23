@@ -65,6 +65,30 @@ final class PersistenceServiceInstance: PersistenceService {
         return chat
     }
 
+    func createChat(id: String, participantAddresses: [String]) throws -> ChatModel {
+        var descriptor = FetchDescriptor<ChatModel>(
+            predicate: #Predicate { $0.id == id }
+        )
+        
+        descriptor.fetchLimit = 1
+        
+        if let existing = try context.fetch(descriptor).first {
+            if existing.participantAddresses.count < 2 && participantAddresses.count >= 2 {
+                existing.participantAddresses = participantAddresses
+                existing.recipientAddress = participantAddresses.first ?? existing.recipientAddress
+                try context.save()
+            }
+            return existing
+        }
+
+        let primary = participantAddresses.first ?? ""
+        let chat = ChatModel(id: id, recipientAddress: primary, participantAddresses: participantAddresses)
+        context.insert(chat)
+        try context.save()
+
+        return chat
+    }
+
     func chat(forAddress address: String) throws -> ChatModel? {
         var descriptor = FetchDescriptor<ChatModel>(
             predicate: #Predicate { $0.recipientAddress == address }
@@ -131,6 +155,9 @@ final class PersistenceServiceInstance: PersistenceService {
             existing.plaintext = message.plaintext ?? existing.plaintext
             existing.isDecrypted = message.isDecrypted || existing.isDecrypted
             existing.cid = message.cid.isEmpty ? existing.cid : message.cid
+            if let type = message.messageType { existing.messageType = type }
+            if let data = message.imageData { existing.imageData = data }
+            if let name = message.fileName { existing.fileName = name }
         } else {
             context.insert(message)
         }
@@ -145,6 +172,26 @@ final class PersistenceServiceInstance: PersistenceService {
         guard let chat = try context.fetch(descriptor).first else { return }
         chat.lastMessagePreview = text
         chat.lastMessageDate = date
+        try context.save()
+    }
+
+    func deleteChat(chatId: String) throws {
+        let messagesDescriptor = FetchDescriptor<MessageModel>(
+            predicate: #Predicate { $0.chatId == chatId }
+        )
+        let messages = try context.fetch(messagesDescriptor)
+        for message in messages {
+            context.delete(message)
+        }
+
+        var chatDescriptor = FetchDescriptor<ChatModel>(
+            predicate: #Predicate { $0.id == chatId }
+        )
+        chatDescriptor.fetchLimit = 1
+        if let chat = try context.fetch(chatDescriptor).first {
+            context.delete(chat)
+        }
+
         try context.save()
     }
 

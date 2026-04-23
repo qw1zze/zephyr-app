@@ -17,8 +17,12 @@ final class BlockchainServiceMock: BlockchainService {
         return "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
     }
 
-    func createChat(chatId: String, recipientAddress: String) async throws -> String {
+    func createChat(chatId: String, recipientAddresses: [String]) async throws -> String {
         return "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+    }
+
+    func getChatParticipants(chatId: String) async throws -> [String] {
+        return []
     }
 
     func anchorBatch(chatId: String, messageIds: [String], cids: [String], timestamps: [Int64]) async throws -> String {

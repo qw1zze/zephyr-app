@@ -11,10 +11,10 @@ enum Constants {
 
     static let relayWSURL    = "ws://localhost:8082/ws"
     static let storageBaseURL = "http://localhost:8080"
-    static let RPCURL = "https://ethereum-hoodi-rpc.publicnode.com"
+    static let RPCURL = "https://0xrpc.io/hoodi"
 
     static let keyRegistryAddress = "0x4B948B5B31485F4069F48090cA7ac48B4FcD1EB4"
-    static let messageRegistryAddress = "0x7B296afb07fa405f979dbD08CE8ed44d2A8856E5"
+    static let messageRegistryAddress = "0xc6Ba133C2D1bb807f81C639685b4a0585e1ff0Db"
 
     static let messageRegistryABI = """
     [
@@ -23,7 +23,7 @@ enum Constants {
         "type": "function",
         "inputs": [
           {"name": "chatId", "type": "bytes32"},
-          {"name": "recipient", "type": "address"}
+          {"name": "recipients", "type": "address[]"}
         ],
         "outputs": [],
         "stateMutability": "nonpayable"
@@ -48,11 +48,28 @@ enum Constants {
         "stateMutability": "view"
       },
       {
+        "name": "getChatParticipants",
+        "type": "function",
+        "inputs": [{"name": "chatId", "type": "bytes32"}],
+        "outputs": [{"name": "", "type": "address[]"}],
+        "stateMutability": "view"
+      },
+      {
         "name": "getUserChats",
         "type": "function",
         "inputs": [{"name": "user", "type": "address"}],
         "outputs": [{"name": "", "type": "bytes32[]"}],
         "stateMutability": "view"
+      },
+      {
+        "name": "ChatCreated",
+        "type": "event",
+        "inputs": [
+          {"name": "chatId", "type": "bytes32", "indexed": true},
+          {"name": "creator", "type": "address", "indexed": true},
+          {"name": "participants", "type": "address[]", "indexed": false},
+          {"name": "blockNumber", "type": "uint256", "indexed": false}
+        ]
       },
       {
         "name": "BatchAnchored",

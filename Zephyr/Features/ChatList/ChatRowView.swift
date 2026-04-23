@@ -36,15 +36,15 @@ extension ChatListView {
                 .fill(AppTheme.surface)
                 .frame(width: 50, height: 50)
                 .overlay {
-                    Image(systemName: "person.fill")
-                        .font(.system(size: 22))
+                    Image(systemName: chat.isGroupChat ? "person.3.fill" : "person.fill")
+                        .font(.system(size: chat.isGroupChat ? 18 : 22))
                         .foregroundStyle(AppTheme.textSecondary)
                 }
         }
         
         private var chatInfo: some View {
             VStack(alignment: .leading, spacing: 4) {
-                Text(shortAddress(chat.recipientAddress))
+                Text(chatDisplayName)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(AppTheme.textPrimary)
 
@@ -55,6 +55,13 @@ extension ChatListView {
                         .lineLimit(1)
                 }
             }
+        }
+        
+        private var chatDisplayName: String {
+            if chat.isGroupChat {
+                return "Группа · \(chat.participantAddresses.count + 1) участника"
+            }
+            return shortAddress(chat.recipientAddress)
         }
         
         private func chatDate(date: Date) -> some View {

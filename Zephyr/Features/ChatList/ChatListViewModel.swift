@@ -16,23 +16,32 @@ enum AddressValidation: Equatable {
     case valid
 }
 
+struct AddressEntry: Identifiable, Equatable {
+    var id = UUID()
+    var text: String = ""
+    var validation: AddressValidation = .idle
+}
+
 @MainActor
 final class ChatListViewModel: ObservableObject {
     @Published private(set) var chats: [ChatModel] = []
     @Published private(set) var isLoading = false
     @Published private(set) var error: String?
 
-    @Published var newChatAddress = ""
-    @Published private(set) var addressValidation = AddressValidation.idle
+    @Published var addressEntries: [AddressEntry] = [AddressEntry()]
     @Published private(set) var isCreatingChat = false
     @Published private(set) var createdChatID: String?
     @Published private(set) var isRestoringHistory = false
 
-    private let container: ServiceContainer
-    private let onChatSelected: (String, String) -> Void
-    private var validationTask: Task<Void, Never>?
+    var canCreateChat: Bool {
+        !isCreatingChat && !addressEntries.isEmpty && addressEntries.allSatisfy { $0.validation == .valid }
+    }
 
-    init(container: ServiceContainer, onChatSelected: @escaping (String, String) -> Void) {
+    private let container: ServiceContainer
+    private let onChatSelected: (String, [String]) -> Void
+    private var validationTasks: [UUID: Task<Void, Never>] = [:]
+
+    init(container: ServiceContainer, onChatSelected: @escaping (String, [String]) -> Void) {
         self.container = container
         self.onChatSelected = onChatSelected
     }
@@ -52,53 +61,77 @@ final class ChatListViewModel: ObservableObject {
         await loadChats()
     }
 
-    func validateAddress(_ address: String) async {
-        validationTask?.cancel()
-        validationTask = nil
+    func addAddressEntry() {
+        addressEntries.append(AddressEntry())
+    }
 
-        guard !address.isEmpty else {
-            addressValidation = .idle
+    func removeAddressEntry(id: UUID) {
+        guard addressEntries.count > 1 else { return }
+        validationTasks[id]?.cancel()
+        validationTasks.removeValue(forKey: id)
+        addressEntries.removeAll { $0.id == id }
+    }
+
+    func validateEntry(id: UUID, value: String) async {
+        validationTasks[id]?.cancel()
+        validationTasks[id] = nil
+
+        guard let index = addressEntries.firstIndex(where: { $0.id == id }) else { return }
+        addressEntries[index].text = value
+
+        guard !value.isEmpty else {
+            addressEntries[index].validation = .idle
             return
         }
 
-        guard isValidEthereumAddress(address) else {
-            addressValidation = .invalidFormat
+        guard isValidEthereumAddress(value) else {
+            addressEntries[index].validation = .invalidFormat
             return
         }
 
-        addressValidation = .checking
+        addressEntries[index].validation = .checking
 
-        validationTask = Task {
+        let task = Task {
             do {
                 try await Task.sleep(nanoseconds: 60_000_000)
             } catch {
                 return
             }
             guard !Task.isCancelled else { return }
+            guard let idx = addressEntries.firstIndex(where: { $0.id == id }) else { return }
             do {
-                let key = try await container.ethereum.getPublicKey(address: address)
+                let key = try await container.ethereum.getPublicKey(address: value)
                 guard !Task.isCancelled else { return }
-                addressValidation = key != nil ? .valid : .notFound
+                addressEntries[idx].validation = key != nil ? .valid : .notFound
             } catch {
                 guard !Task.isCancelled else { return }
-                addressValidation = .notFound
+                addressEntries[idx].validation = .notFound
             }
         }
+        validationTasks[id] = task
     }
 
-    func createChat(recipientAddress: String) async {
-        guard addressValidation == .valid else { return }
+    func createChat() async {
+        guard canCreateChat else { return }
         isCreatingChat = true
         error = nil
         defer { isCreatingChat = false }
         do {
             let myAddress = (try? container.keychain.load(key: KeychainKeys.address))
                 .flatMap { String(data: $0, encoding: .utf8) } ?? ""
-            let chatId = generateChatId(address1: myAddress, address2: recipientAddress)
-            let chat = try container.persistence.createChat(id: chatId, recipientAddress: recipientAddress)
+            let recipientAddresses = addressEntries.map { $0.text }
+
+            let chat: ChatModel
+            if recipientAddresses.count == 1 {
+                let chatId = generateChatId(addresses: [myAddress, recipientAddresses[0]])
+                chat = try container.persistence.createChat(id: chatId, recipientAddress: recipientAddresses[0])
+            } else {
+                let chatId = generateChatId(addresses: [myAddress] + recipientAddresses)
+                chat = try container.persistence.createChat(id: chatId, participantAddresses: recipientAddresses)
+            }
+
             chats = try container.persistence.fetchChats()
-            newChatAddress = ""
-            addressValidation = .idle
+            resetCreateChat()
             createdChatID = chat.id
         } catch {
             self.error = error.localizedDescription
@@ -106,7 +139,17 @@ final class ChatListViewModel: ObservableObject {
     }
 
     func selectChat(_ chat: ChatModel) {
-        onChatSelected(chat.id, chat.recipientAddress)
+        let recipients = chat.isGroupChat ? chat.participantAddresses : [chat.recipientAddress]
+        onChatSelected(chat.id, recipients)
+    }
+
+    func deleteChat(_ chat: ChatModel) {
+        do {
+            try container.persistence.deleteChat(chatId: chat.id)
+            chats.removeAll { $0.id == chat.id }
+        } catch {
+            self.error = error.localizedDescription
+        }
     }
 
     func startListen() {
@@ -134,7 +177,15 @@ final class ChatListViewModel: ObservableObject {
     private func handleIncomingMessage(_ envelope: Envelope) async {
         do {
             if !chats.contains(where: { $0.id == envelope.chatId }) {
-                _ = try container.persistence.createChat(id: envelope.chatId, recipientAddress: envelope.senderAddr)
+                if envelope.recipientAddrs.count > 1 {
+                    let myAddress = (try? container.keychain.load(key: KeychainKeys.address))
+                        .flatMap { String(data: $0, encoding: .utf8) } ?? ""
+                    let otherParticipants = ([envelope.senderAddr] + envelope.recipientAddrs)
+                        .filter { $0.lowercased() != myAddress.lowercased() }
+                    _ = try container.persistence.createChat(id: envelope.chatId, participantAddresses: otherParticipants)
+                } else {
+                    _ = try container.persistence.createChat(id: envelope.chatId, recipientAddress: envelope.senderAddr)
+                }
             }
 
             let decrypted: DecryptedMessage? = try? await container.messageSender.decrypt(envelope: envelope)
@@ -145,7 +196,12 @@ final class ChatListViewModel: ObservableObject {
 
             try await container.persistence.saveMessage(message)
 
-            let preview = decrypted?.messageType == "image" ? "Изображение" : (decrypted?.text ?? "")
+            let preview: String
+            switch decrypted?.messageType {
+            case "image": preview = "📷 Изображение"
+            case "file": preview = decrypted?.fileName.map { "📎 \($0)" } ?? "Файл"
+            default: preview = decrypted?.text ?? ""
+            }
             try await container.persistence.updateChatLastMessage(chatId: envelope.chatId, text: preview, date: messageTimestamp)
 
             chats = try container.persistence.fetchChats()
@@ -167,16 +223,30 @@ final class ChatListViewModel: ObservableObject {
                 let chatIds = try await container.ethereum.getUserChats(userAddress: myAddress)
 
                 for chatId in chatIds {
-                    let recipientAddress = await findRecipient(chatId: chatId, myAddress: myAddress)
-                    guard !recipientAddress.isEmpty else { continue }
+                    let allParticipants = (try? await container.ethereum.getChatParticipants(chatId: chatId)) ?? []
+                    let otherParticipants = allParticipants.filter { $0.lowercased() != myAddress.lowercased() }
+                    guard !otherParticipants.isEmpty else { continue }
 
-                    if !chats.contains(where: { $0.id == chatId }) {
-                        _ = try? container.persistence.createChat(id: chatId, recipientAddress: recipientAddress)
+                    if otherParticipants.count >= 2 {
+                        _ = try? container.persistence.createChat(id: chatId, participantAddresses: otherParticipants)
+                    } else if !chats.contains(where: { $0.id == chatId }) {
+                        _ = try? container.persistence.createChat(id: chatId, recipientAddress: otherParticipants[0])
                     }
 
-                    let recovered = try await container.blockchainRecovery.recover(chatId: chatId, recipientAddress: recipientAddress)
+                    let primaryRecipient = otherParticipants[0]
+                    let recovered = try await container.blockchainRecovery.recover(chatId: chatId, recipientAddress: primaryRecipient)
                     for model in recovered {
                         try? await container.persistence.saveMessage(model)
+                    }
+
+                    if let last = recovered.max(by: { $0.timestamp < $1.timestamp }) {
+                        let preview: String
+                        switch last.messageType {
+                        case "image": preview = "📷 Изображение"
+                        case "file": preview = last.fileName.map { "📎 \($0)" } ?? "Файл"
+                        default: preview = last.plaintext ?? ""
+                        }
+                        try? await container.persistence.updateChatLastMessage(chatId: chatId, text: preview, date: last.timestamp)
                     }
                 }
 
@@ -187,28 +257,13 @@ final class ChatListViewModel: ObservableObject {
         }
     }
 
-    private func findRecipient(chatId: String, myAddress: String) async -> String {
-        if let existing = chats.first(where: { $0.id == chatId }) {
-            return existing.recipientAddress
-        }
-        do {
-            let startBlock = try await container.ethereum.getChatCreatedAtBlock(chatId: chatId)
-            let latestBlock = try await container.ethereum.getLatestBlock()
-            let toBlock = min(startBlock + 10_000, latestBlock)
-            let events = try await container.ethereum.getAnchoredBatches(chatId: chatId, fromBlock: startBlock, toBlock: toBlock)
-            for event in events where event.sender.lowercased() != myAddress.lowercased() {
-                return event.sender
-            }
-        } catch {}
-        return ""
-    }
-
     func resetCreateChat() {
-        newChatAddress = ""
-        addressValidation = .idle
+        for entry in addressEntries {
+            validationTasks[entry.id]?.cancel()
+        }
+        validationTasks.removeAll()
+        addressEntries = [AddressEntry()]
         createdChatID = nil
-        validationTask?.cancel()
-        validationTask = nil
     }
 
     private func isValidEthereumAddress(_ address: String) -> Bool {

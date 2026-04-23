@@ -13,6 +13,7 @@ struct ChatView: View {
     @State private var keyboardTrigger: Int = 0
     @State private var isPickerPresented = false
     @State private var selectedPhotoItem: PhotosPickerItem? = nil
+    @State private var isDocumentPickerPresented = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -22,6 +23,8 @@ struct ChatView: View {
                 Task { await viewModel.sendMessage() }
             }, onPickImage: {
                 isPickerPresented = true
+            }, onPickFile: {
+                isDocumentPickerPresented = true
             })
         }
         .background(AppTheme.background.ignoresSafeArea())
@@ -31,7 +34,7 @@ struct ChatView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
             keyboardTrigger += 1
         }
-        .navigationTitle(formattedAddress(viewModel.recipientAddress))
+        .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
         .preferredColorScheme(.dark)
         .toolbar {
@@ -54,10 +57,22 @@ struct ChatView: View {
                 selectedPhotoItem = nil
             }
         }
+        .sheet(isPresented: $isDocumentPickerPresented) {
+            DocumentPickerView { data, fileName in
+                Task { await viewModel.sendFile(data, fileName: fileName) }
+            }
+        }
         .task {
             await viewModel.loadInitialMessages()
             viewModel.startRecieve()
         }
+    }
+
+    private var navigationTitle: String {
+        if viewModel.isGroupChat {
+            return "Группа · \(viewModel.recipientAddresses.count + 1)"
+        }
+        return formattedAddress(viewModel.recipientAddress)
     }
 
     private var isRecoveryAlertPresented: Bool {
@@ -117,9 +132,18 @@ struct ChatView: View {
                         ForEach(group.messages, id: \.id) { message in
                             MessageBubbleView(
                                 message: message,
-                                isOutgoing: message.senderAddress == viewModel.myAddress
+                                isOutgoing: message.senderAddress == viewModel.myAddress,
+                                senderLabel: viewModel.isGroupChat && message.senderAddress != viewModel.myAddress
+                                    ? formattedAddress(message.senderAddress)
+                                    : nil,
+                                downloadState: viewModel.messageDownloadStates[message.id],
+                                onRetry: message.senderAddress == viewModel.myAddress ? {
+                                    viewModel.retryMessage(id: message.id)
+                                } : nil,
+                                onCancelDownload: { viewModel.cancelDownload(id: message.id) },
+                                onRetryDownload: { viewModel.retryDownload(id: message.id) }
                             )
-                            .padding(.vertical, 2)
+                            .padding(.vertical, 7)
                             .id(message.id)
                         }
                     }
