@@ -144,19 +144,30 @@ struct SettingsCoordinatorView: View {
 
 struct OnboardingCoordinatorView: View {
     @StateObject private var coordinator: OnboardingCoordinator
+    @State private var introCompleted: Bool
 
     init(container: ServiceContainer, onComplete: @escaping () -> Void) {
         _coordinator = StateObject(
             wrappedValue: OnboardingCoordinator(container: container, onComplete: onComplete)
         )
+        _introCompleted = State(initialValue: UserDefaults.standard.bool(forKey: "introOnboardingSeen"))
     }
 
     var body: some View {
-        NavigationStack(path: $coordinator.path) {
-            coordinator.makeWelcomeView()
-                .navigationDestination(for: OnboardingCoordinator.Route.self) { route in
-                    coordinator.view(for: route)
+        if introCompleted {
+            NavigationStack(path: $coordinator.path) {
+                coordinator.makeWelcomeView()
+                    .navigationDestination(for: OnboardingCoordinator.Route.self) { route in
+                        coordinator.view(for: route)
+                    }
+            }
+        } else {
+            IntroOnboardingView {
+                UserDefaults.standard.set(true, forKey: "introOnboardingSeen")
+                withAnimation(.easeInOut(duration: 0.35)) {
+                    introCompleted = true
                 }
+            }
         }
     }
 }

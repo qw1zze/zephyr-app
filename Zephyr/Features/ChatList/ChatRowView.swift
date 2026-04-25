@@ -69,6 +69,9 @@ extension ChatListView {
         }
         
         private var chatDisplayName: String {
+            if let alias = chat.localAlias, !alias.isEmpty {
+                return alias
+            }
             if chat.isGroupChat {
                 return "Группа · \(chat.participantAddresses.count + 1) участника"
             }

@@ -40,10 +40,10 @@ final class ChatListViewModel: ObservableObject {
     }
 
     private let container: ServiceContainer
-    private let onChatSelected: (String, [String], String?) -> Void
+    private let onChatSelected: (String, [String], String?, String?, Data?) -> Void
     private var validationTasks: [UUID: Task<Void, Never>] = [:]
 
-    init(container: ServiceContainer, onChatSelected: @escaping (String, [String], String?) -> Void) {
+    init(container: ServiceContainer, onChatSelected: @escaping (String, [String], String?, String?, Data?) -> Void) {
         self.container = container
         self.onChatSelected = onChatSelected
     }
@@ -157,7 +157,13 @@ final class ChatListViewModel: ObservableObject {
 
     func selectChat(_ chat: ChatModel) {
         let recipients = chat.isGroupChat ? chat.participantAddresses : [chat.recipientAddress]
-        onChatSelected(chat.id, recipients, chat.recipientNickname)
+        onChatSelected(chat.id, recipients, chat.recipientNickname, chat.localAlias, chat.recipientAvatarData)
+    }
+
+    func renameChat(_ chat: ChatModel, name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        chat.localAlias = trimmed.isEmpty ? nil : trimmed
+        objectWillChange.send()
     }
 
     func deleteChat(_ chat: ChatModel) {

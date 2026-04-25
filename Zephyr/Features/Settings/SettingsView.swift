@@ -12,6 +12,7 @@ struct SettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @State private var photoItem: PhotosPickerItem? = nil
     @State private var showLogoutAlert = false
+    @State private var showQRSheet = false
 
     var body: some View {
         ZStack {
@@ -26,6 +27,7 @@ struct SettingsView: View {
                     }
                     addressSection
                     Spacer(minLength: 32)
+                    qrButton
                     logoutButton
                 }
                 .padding(.horizontal, 16)
@@ -65,6 +67,9 @@ struct SettingsView: View {
             Button("Отмена", role: .cancel) {}
         } message: {
             Text("Все данные аккаунта будут удалены с устройства. Сохраните мнемоническую фразу заранее.")
+        }
+        .sheet(isPresented: $showQRSheet) {
+            QRCodeSheet(address: viewModel.address)
         }
         .preferredColorScheme(.dark)
         .onTapGesture {
@@ -195,6 +200,24 @@ struct SettingsView: View {
         }
     }
 
+    private var qrButton: some View {
+        Button {
+            showQRSheet = true
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "qrcode")
+                    .font(.system(size: 17, weight: .semibold))
+                Text("Показать QR-код")
+                    .font(.system(size: 16, weight: .semibold))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: AppTheme.radiusPill))
+            .foregroundStyle(AppTheme.textPrimary)
+        }
+        .disabled(viewModel.address.isEmpty)
+    }
+
     private var logoutButton: some View {
         Button {
             showLogoutAlert = true
@@ -241,5 +264,80 @@ struct SettingsView: View {
             .foregroundStyle(AppTheme.textTertiary)
             .textCase(.uppercase)
             .tracking(0.5)
+    }
+}
+
+private struct QRCodeSheet: View {
+    let address: String
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            AppTheme.background.ignoresSafeArea()
+
+            VStack(spacing: 28) {
+                HStack {
+                    Spacer()
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 26))
+                            .foregroundStyle(AppTheme.textTertiary)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+
+                Text("Адрес кошелька")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(AppTheme.textPrimary)
+
+                if let qrImage = generateQR(from: address) {
+                    Image(uiImage: qrImage)
+                        .interpolation(.none)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 220, height: 220)
+                        .padding(16)
+                        .background(.white, in: RoundedRectangle(cornerRadius: AppTheme.radiusCard))
+                }
+
+                Text(address)
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+
+                Button {
+                    UIPasteboard.general.string = address
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "doc.on.doc")
+                        Text("Скопировать адрес")
+                    }
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(AppTheme.accent)
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 24)
+                    .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: AppTheme.radiusPill))
+                }
+
+                Spacer()
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+
+    private func generateQR(from string: String) -> UIImage? {
+        guard let data = string.data(using: .utf8),
+              let filter = CIFilter(name: "CIQRCodeGenerator") else { return nil }
+        filter.setValue(data, forKey: "inputMessage")
+        filter.setValue("M", forKey: "inputCorrectionLevel")
+        guard let ciImage = filter.outputImage else { return nil }
+        let scaled = ciImage.transformed(by: CGAffineTransform(scaleX: 10, y: 10))
+        let context = CIContext()
+        guard let cgImage = context.createCGImage(scaled, from: scaled.extent) else { return nil }
+        return UIImage(cgImage: cgImage)
     }
 }

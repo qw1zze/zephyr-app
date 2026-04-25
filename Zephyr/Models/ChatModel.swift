@@ -19,6 +19,7 @@ final class ChatModel {
     var isRegisteredOnChain: Bool
     var recipientNickname: String?
     var recipientAvatarData: Data?
+    var localAlias: String?
 
     var isGroupChat: Bool {
         participantAddresses.count >= 2

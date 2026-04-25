@@ -11,6 +11,8 @@ struct ChatListView: View {
     @ObservedObject var viewModel: ChatListViewModel
     @State private var showCreateChat = false
     @State private var searchText = ""
+    @State private var chatToRename: ChatModel? = nil
+    @State private var renameText = ""
 
     var body: some View {
         ZStack {
@@ -49,6 +51,23 @@ struct ChatListView: View {
             viewModel.startListen()
         }
         .preferredColorScheme(.dark)
+        .alert("Переименовать", isPresented: Binding(
+            get: { chatToRename != nil },
+            set: { if !$0 { chatToRename = nil } }
+        )) {
+            TextField("Название", text: $renameText)
+            Button("Сохранить") {
+                if let chat = chatToRename {
+                    viewModel.renameChat(chat, name: renameText)
+                }
+                chatToRename = nil
+            }
+            Button("Отмена", role: .cancel) {
+                chatToRename = nil
+            }
+        } message: {
+            Text("Введите локальное название для этого чата")
+        }
     }
     
     private var restoreButton: some View {
@@ -98,6 +117,12 @@ struct ChatListView: View {
                     viewModel.selectChat(chat)
                 }
                 .contextMenu {
+                    Button {
+                        renameText = chat.localAlias ?? ""
+                        chatToRename = chat
+                    } label: {
+                        Label("Переименовать", systemImage: "pencil")
+                    }
                     Button(role: .destructive) {
                         viewModel.deleteChat(chat)
                     } label: {

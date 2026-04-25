@@ -16,7 +16,7 @@ final class ChatListCoordinator: ObservableObject {
     private var chatCoordinators: [String: ChatCoordinator] = [:]
 
     enum Route: Hashable {
-        case chat(chatId: String, recipientAddresses: [String], recipientNickname: String?)
+        case chat(chatId: String, recipientAddresses: [String], recipientNickname: String?, localAlias: String?, recipientAvatarData: Data?)
     }
 
     init(container: ServiceContainer) {
@@ -29,8 +29,8 @@ final class ChatListCoordinator: ObservableObject {
 
     lazy var chatListViewModel: ChatListViewModel = ChatListViewModel(
         container: container,
-        onChatSelected: { [weak self] chatId, recipientAddresses, recipientNickname in
-            self?.navigate(to: .chat(chatId: chatId, recipientAddresses: recipientAddresses, recipientNickname: recipientNickname))
+        onChatSelected: { [weak self] chatId, recipientAddresses, recipientNickname, localAlias, avatarData in
+            self?.navigate(to: .chat(chatId: chatId, recipientAddresses: recipientAddresses, recipientNickname: recipientNickname, localAlias: localAlias, recipientAvatarData: avatarData))
         }
     )
 
@@ -41,13 +41,13 @@ final class ChatListCoordinator: ObservableObject {
     @ViewBuilder
     func view(for route: Route) -> some View {
         switch route {
-        case .chat(let chatId, let recipientAddresses, let recipientNickname):
-            ChatView(viewModel: coordinator(for: chatId, recipientAddresses: recipientAddresses, recipientNickname: recipientNickname).viewModel)
+        case .chat(let chatId, let recipientAddresses, let recipientNickname, let localAlias, let avatarData):
+            ChatView(viewModel: coordinator(for: chatId, recipientAddresses: recipientAddresses, recipientNickname: recipientNickname, localAlias: localAlias, recipientAvatarData: avatarData).viewModel)
                 .preferredColorScheme(.dark)
         }
     }
 
-    private func coordinator(for chatId: String, recipientAddresses: [String], recipientNickname: String?) -> ChatCoordinator {
+    private func coordinator(for chatId: String, recipientAddresses: [String], recipientNickname: String?, localAlias: String?, recipientAvatarData: Data?) -> ChatCoordinator {
         if let existing = chatCoordinators[chatId] {
             return existing
         }
@@ -55,6 +55,8 @@ final class ChatListCoordinator: ObservableObject {
             chatId: chatId,
             recipientAddresses: recipientAddresses,
             recipientNickname: recipientNickname,
+            localAlias: localAlias,
+            recipientAvatarData: recipientAvatarData,
             container: container
         )
         chatCoordinators[chatId] = coordinator

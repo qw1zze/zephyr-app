@@ -14,6 +14,7 @@ struct ChatView: View {
     @State private var isPickerPresented = false
     @State private var selectedPhotoItem: PhotosPickerItem? = nil
     @State private var isDocumentPickerPresented = false
+    @State private var isChatInfoPresented = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -39,13 +40,16 @@ struct ChatView: View {
         .preferredColorScheme(.dark)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                recoveryButton
+                menuButton
             }
         }
         .alert(recoveryAlertTitle, isPresented: .constant(isRecoveryAlertPresented)) {
             Button("OK") {
                 viewModel.dismissRecoveryAlert()
             }
+        }
+        .sheet(isPresented: $isChatInfoPresented) {
+            ChatInfoView(viewModel: viewModel)
         }
         .photosPicker(isPresented: $isPickerPresented, selection: $selectedPhotoItem, matching: .images)
         .onChange(of: selectedPhotoItem) { _, newItem in
@@ -69,6 +73,9 @@ struct ChatView: View {
     }
 
     private var navigationTitle: String {
+        if let alias = viewModel.localAlias, !alias.isEmpty {
+            return alias
+        }
         if viewModel.isGroupChat {
             return "Группа · \(viewModel.recipientAddresses.count + 1)"
         }
@@ -99,16 +106,25 @@ struct ChatView: View {
     }
 
     @ViewBuilder
-    private var recoveryButton: some View {
-        switch viewModel.recoveryState {
-        case .recovering:
+    private var menuButton: some View {
+        if viewModel.recoveryState == .recovering {
             ProgressView()
                 .tint(.white)
-        default:
-            Button {
-                viewModel.recoverFromBlockchain()
+        } else {
+            Menu {
+                Button {
+                    viewModel.recoverFromBlockchain()
+                } label: {
+                    Label("Восстановить переписку", systemImage: "arrow.clockwise.icloud")
+                }
+
+                Button {
+                    isChatInfoPresented = true
+                } label: {
+                    Label("О чате", systemImage: "info.circle")
+                }
             } label: {
-                Image(systemName: "arrow.clockwise.icloud")
+                Image(systemName: "ellipsis")
                     .foregroundColor(AppTheme.accent)
             }
         }
