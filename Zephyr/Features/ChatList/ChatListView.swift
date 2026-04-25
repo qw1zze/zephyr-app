@@ -17,7 +17,7 @@ struct ChatListView: View {
     var body: some View {
         ZStack {
             AppTheme.background.ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
                 searchBar
                     .padding(.horizontal, 16)
@@ -68,20 +68,31 @@ struct ChatListView: View {
         } message: {
             Text("Введите локальное название для этого чата")
         }
+        .alert("Пользователь разблокирован", isPresented: Binding(
+            get: { viewModel.unblockAlertChat != nil },
+            set: { if !$0 { viewModel.dismissUnblockAlert() } }
+        )) {
+            Button("Восстановить переписку") {
+                if let chat = viewModel.unblockAlertChat {
+                    viewModel.restoreChat(chat)
+                }
+                viewModel.dismissUnblockAlert()
+            }
+            Button("Позже", role: .cancel) {
+                viewModel.dismissUnblockAlert()
+            }
+        } message: {
+            Text("Хотите восстановить историю переписки с этим пользователем?")
+        }
     }
     
     private var restoreButton: some View {
         Button {
             viewModel.restoreAllChats()
         } label: {
-            if viewModel.isRestoringHistory {
-                ProgressView()
-                    .tint(AppTheme.accent)
-            } else {
-                Image(systemName: "arrow.counterclockwise.icloud")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(AppTheme.accent)
-            }
+            Image(systemName: "arrow.counterclockwise.icloud")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(AppTheme.accent)
         }
         .disabled(viewModel.isRestoringHistory)
     }
@@ -107,7 +118,7 @@ struct ChatListView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: AppTheme.radiusInput))
+        .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: 14))
     }
 
     private var chatList: some View {
@@ -123,6 +134,19 @@ struct ChatListView: View {
                     } label: {
                         Label("Переименовать", systemImage: "pencil")
                     }
+                    if chat.isBlocked {
+                        Button {
+                            viewModel.unblockChat(chat)
+                        } label: {
+                            Label("Разблокировать", systemImage: "lock.open")
+                        }
+                    } else {
+                        Button(role: .destructive) {
+                            viewModel.blockChat(chat)
+                        } label: {
+                            Label("Заблокировать", systemImage: "slash.circle")
+                        }
+                    }
                     Button(role: .destructive) {
                         viewModel.deleteChat(chat)
                     } label: {
@@ -130,7 +154,6 @@ struct ChatListView: View {
                     }
                 }
                 .listRowBackground(AppTheme.background)
-                .listRowSeparatorTint(AppTheme.separator)
             }
         }
         .listStyle(.plain)

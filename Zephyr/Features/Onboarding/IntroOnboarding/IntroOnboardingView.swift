@@ -9,7 +9,6 @@ import SwiftUI
 
 private struct IntroSlide {
     let iconPrimary: String
-    let iconBadge: String?
     let title: String
     let subtitle: String
 }
@@ -21,20 +20,17 @@ struct IntroOnboardingView: View {
 
     private let slides: [IntroSlide] = [
         IntroSlide(
-            iconPrimary: "envelope.fill",
-            iconBadge: "checkmark.circle.fill",
+            iconPrimary: "onboarding1",
             title: "Полная приватность",
             subtitle: "Сквозное шифрование на каждое сообщение. Никаких серверных копий."
         ),
         IntroSlide(
-            iconPrimary: "cpu",
-            iconBadge: nil,
+            iconPrimary: "onboarding2",
             title: "Блокчейн-хранение",
             subtitle: "Ваши сообщения хранятся с использованием блокчейна — децентрализованно и без единой точки уязвимости."
         ),
         IntroSlide(
-            iconPrimary: "scope",
-            iconBadge: nil,
+            iconPrimary: "onboarding3",
             title: "Анонимные группы",
             subtitle: "Общайтесь в закрытых кругах. Никто не узнает, кто вы."
         )
@@ -42,11 +38,11 @@ struct IntroOnboardingView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.background.ignoresSafeArea()
-            IntroGridBackground()
-            IntroScatteredDots()
+            ZephyrBackground(showGrid: true, showScanline: true, showCRT: true)
 
             VStack(spacing: 0) {
+                Spacer()
+                
                 TabView(selection: $currentPage) {
                     ForEach(slides.indices, id: \.self) { index in
                         slideContent(slides[index])
@@ -54,12 +50,15 @@ struct IntroOnboardingView: View {
                     }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
-                .animation(.easeInOut, value: currentPage)
+                .animation(.easeInOut(duration: 0.3), value: currentPage)
+                .frame(height: 350)
 
                 pageIndicator
-                    .padding(.top, 32)
+                
+                Spacer()
 
                 actionButton
+                    .buttonStyle(ZephyrButtonStyle(filled: true))
                     .padding(.horizontal, 24)
                     .padding(.top, 24)
                     .padding(.bottom, 48)
@@ -70,10 +69,8 @@ struct IntroOnboardingView: View {
     }
 
     private func slideContent(_ slide: IntroSlide) -> some View {
-        VStack(spacing: 0) {
-            Spacer()
+        VStack(spacing: 20) {
             iconView(slide)
-            Spacer()
             textBlock(slide)
         }
         .padding(.bottom, 8)
@@ -81,54 +78,22 @@ struct IntroOnboardingView: View {
 
     private func iconView(_ slide: IntroSlide) -> some View {
         ZStack {
-            RadialGradient(
-                colors: [AppTheme.accent.opacity(0.22), Color.clear],
-                center: .center,
-                startRadius: 0,
-                endRadius: 160
-            )
-            .frame(width: 320, height: 320)
-
-            ZStack(alignment: .topTrailing) {
-                RoundedRectangle(cornerRadius: 32)
-                    .fill(Color(white: 0.09))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 32)
-                            .stroke(AppTheme.accent.opacity(0.35), lineWidth: 1)
-                    )
-                    .frame(width: 160, height: 160)
-                    .shadow(color: AppTheme.accent.opacity(0.15), radius: 24, x: 0, y: 8)
-
-                Image(systemName: slide.iconPrimary)
-                    .font(.system(size: 56, weight: .light))
-                    .foregroundStyle(AppTheme.accent)
-                    .frame(width: 160, height: 160)
-
-                if let badge = slide.iconBadge {
-                    Image(systemName: badge)
-                        .font(.system(size: 24, weight: .regular))
-                        .foregroundStyle(AppTheme.accent)
-                        .background(
-                            Circle()
-                                .fill(AppTheme.background)
-                                .padding(-2)
-                        )
-                        .offset(x: 8, y: -8)
-                }
-            }
+            Image(slide.iconPrimary)
+                .renderingMode(.original)
+                .frame(width: 160, height: 160)
         }
     }
 
     private func textBlock(_ slide: IntroSlide) -> some View {
         VStack(spacing: 12) {
             Text(slide.title)
-                .font(.system(size: 26, weight: .bold))
-                .foregroundStyle(AppTheme.textPrimary)
+                .font(NewAppTheme.Fonts.title)
+                .foregroundStyle(NewAppTheme.Colors.textPrimary)
                 .multilineTextAlignment(.center)
 
             Text(slide.subtitle)
-                .font(.system(size: 15, weight: .regular))
-                .foregroundStyle(AppTheme.textSecondary)
+                .font(NewAppTheme.Fonts.body)
+                .foregroundStyle(NewAppTheme.Colors.textSecondary)
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
                 .padding(.horizontal, 32)
@@ -163,55 +128,6 @@ struct IntroOnboardingView: View {
                 .padding(.vertical, 16)
                 .background(AppTheme.accent, in: RoundedRectangle(cornerRadius: 18))
         }
-    }
-}
-
-private struct IntroGridBackground: View {
-    var body: some View {
-        Canvas { ctx, size in
-            let spacing: CGFloat = 44
-            let color = Color.white.opacity(0.035)
-            var x: CGFloat = 0
-            while x <= size.width {
-                var path = Path()
-                path.move(to: CGPoint(x: x, y: 0))
-                path.addLine(to: CGPoint(x: x, y: size.height))
-                ctx.stroke(path, with: .color(color), lineWidth: 0.5)
-                x += spacing
-            }
-            var y: CGFloat = 0
-            while y <= size.height {
-                var path = Path()
-                path.move(to: CGPoint(x: 0, y: y))
-                path.addLine(to: CGPoint(x: size.width, y: y))
-                ctx.stroke(path, with: .color(color), lineWidth: 0.5)
-                y += spacing
-            }
-        }
-        .ignoresSafeArea()
-    }
-}
-
-private struct IntroScatteredDots: View {
-    private let positions: [(CGFloat, CGFloat)] = [
-        (0.08, 0.12), (0.88, 0.09), (0.04, 0.42), (0.92, 0.33),
-        (0.14, 0.68), (0.82, 0.62), (0.28, 0.87), (0.72, 0.91),
-        (0.5, 0.18), (0.48, 0.78), (0.62, 0.44), (0.22, 0.55)
-    ]
-
-    var body: some View {
-        GeometryReader { geo in
-            ForEach(positions.indices, id: \.self) { i in
-                Circle()
-                    .fill(Color.white.opacity(0.22))
-                    .frame(width: 4, height: 4)
-                    .position(
-                        x: positions[i].0 * geo.size.width,
-                        y: positions[i].1 * geo.size.height
-                    )
-            }
-        }
-        .ignoresSafeArea()
     }
 }
 

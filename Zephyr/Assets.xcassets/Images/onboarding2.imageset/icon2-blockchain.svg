@@ -1,0 +1,23 @@
+<svg width="140" height="140" viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="140" height="140" rx="40" fill="url(#bg2)"></rect>
+  <rect x="0.75" y="0.75" width="138.5" height="138.5" rx="39.25" stroke="#D9F000" stroke-opacity="0.18" stroke-width="1.5"></rect>
+
+  <rect x="21" y="56" width="36" height="28" rx="14" stroke="#D9F000" stroke-width="3" fill="none"></rect>
+  <rect x="83" y="56" width="36" height="28" rx="14" stroke="#D9F000" stroke-width="3" fill="none"></rect>
+  <rect x="52" y="56" width="36" height="28" rx="14" stroke="#D9F000" stroke-width="3" fill="none" opacity="0.6"></rect>
+
+  <rect x="45" y="22" width="50" height="28" rx="8" stroke="#D9F000" stroke-width="2.5" fill="none" opacity="0.4"></rect>
+  <path d="M60 36 L72 36 M66 30 L66 42" stroke="#D9F000" stroke-width="2.5" stroke-linecap="round" opacity="0.4"></path>
+
+  <rect x="45" y="90" width="50" height="28" rx="8" stroke="#D9F000" stroke-width="2.5" fill="none" opacity="0.4"></rect>
+  <circle cx="70" cy="104" r="5" fill="#D9F000" opacity="0.5"></circle>
+
+  <circle cx="70" cy="70" r="5" fill="#D9F000"></circle>
+
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="140" y2="140" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1A1A1A"></stop>
+      <stop offset="1" stop-color="#1f1f00"></stop>
+    </linearGradient>
+  </defs>
+</svg>

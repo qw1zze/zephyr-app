@@ -7,31 +7,43 @@
 
 import SwiftUI
 import UIKit
+import AVFoundation
+
+private let accentLime = Color(red: 0.78, green: 1.0, blue: 0.0)
+
+private struct ScanTarget: Identifiable {
+    let id = UUID()
+    let entryID: UUID
+}
 
 struct CreateChatSheet: View {
     @ObservedObject var viewModel: ChatListViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var scanningEntryID: ScanTarget?
 
     var body: some View {
         NavigationStack {
             ZStack {
                 Color.black.ignoresSafeArea()
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        recipientsList
-
-                        addRecipientButton
-
-                        Spacer(minLength: 24)
-
-                        createButton
-                            .disabled(!viewModel.canCreateChat)
+                VStack(spacing: 0) {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 24) {
+                            recipientsList
+                            addRecipientButton
+                            Spacer(minLength: 24)
+                        }
+                        .padding(24)
                     }
-                    .padding(24)
+
+                    createButton
+                        .disabled(!viewModel.canCreateChat)
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 32)
+                        .padding(.top, 12)
                 }
             }
-            .navigationTitle(viewModel.addressEntries.count > 1 ? "Новая группа" : "Новый чат")
+            .navigationTitle("Новый чат")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -39,7 +51,7 @@ struct CreateChatSheet: View {
                         viewModel.resetCreateChat()
                         dismiss()
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(accentLime)
                 }
             }
         }
@@ -47,8 +59,13 @@ struct CreateChatSheet: View {
         .onChange(of: viewModel.createdChatID) { _, id in
             if id != nil { dismiss() }
         }
+        .sheet(item: $scanningEntryID) { target in
+            QRScannerSheet { scanned in
+                Task { await viewModel.validateEntry(id: target.entryID, value: scanned) }
+            }
+        }
     }
-    
+
     private var recipientsList: some View {
         VStack(alignment: .leading, spacing: 20) {
             ForEach(Array(viewModel.addressEntries.enumerated()), id: \.element.id) { index, entry in
@@ -59,7 +76,8 @@ struct CreateChatSheet: View {
                     onRemove: { viewModel.removeAddressEntry(id: entry.id) },
                     onChange: { newValue in
                         Task { await viewModel.validateEntry(id: entry.id, value: newValue) }
-                    }
+                    },
+                    onCameraTap: { scanningEntryID = ScanTarget(entryID: entry.id) }
                 )
             }
         }
@@ -69,21 +87,25 @@ struct CreateChatSheet: View {
         Button {
             viewModel.addAddressEntry()
         } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 17))
+            HStack(spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color(white: 0.15))
+                        .frame(width: 28, height: 28)
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(accentLime)
+                }
                 Text("Добавить участника")
                     .font(.system(size: 15))
+                    .foregroundStyle(accentLime)
             }
-            .foregroundStyle(Color.white.opacity(0.6))
         }
     }
 
     private var createButton: some View {
         Button {
-            Task {
-                await viewModel.createChat()
-            }
+            Task { await viewModel.createChat() }
         } label: {
             ZStack {
                 if viewModel.isCreatingChat {
@@ -96,12 +118,10 @@ struct CreateChatSheet: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
+            .padding(.vertical, 18)
             .background(
-                viewModel.canCreateChat
-                    ? Color.white
-                    : Color(white: 0.25),
-                in: RoundedRectangle(cornerRadius: 14)
+                viewModel.canCreateChat ? accentLime : Color(white: 0.18),
+                in: Capsule()
             )
         }
     }
@@ -113,6 +133,7 @@ private struct AddressEntryRow: View {
     let canRemove: Bool
     let onRemove: () -> Void
     let onChange: (String) -> Void
+    let onCameraTap: () -> Void
 
     @State private var text: String = ""
 
@@ -132,47 +153,35 @@ private struct AddressEntryRow: View {
                 }
             }
 
-            TextField("0x...", text: $text)
-                .font(.system(size: 15, design: .monospaced))
-                .foregroundStyle(.white)
-                .tint(.white)
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.never)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
-                .background(Color(white: 0.1), in: RoundedRectangle(cornerRadius: 10))
-                .onChange(of: text) { _, newValue in
-                    onChange(newValue)
+            HStack(spacing: 0) {
+                TextField("0x...", text: $text)
+                    .font(.system(size: 15, design: .monospaced))
+                    .foregroundStyle(.white)
+                    .tint(.white)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+
+                Button(action: onCameraTap) {
+                    Image(systemName: "qrcode.viewfinder")
+                        .font(.system(size: 18))
+                        .foregroundStyle(Color(white: 0.5))
+                        .padding(.leading, 8)
                 }
-                .onAppear {
-                    text = entry.text
-                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color(white: 0.1), in: RoundedRectangle(cornerRadius: 10))
+            .onChange(of: text) { _, newValue in
+                onChange(newValue)
+            }
+            .onAppear {
+                text = entry.text
+            }
 
             validationLabel(for: entry.validation)
         }
         .onChange(of: entry.text) { _, newText in
             if text != newText { text = newText }
-        }
-    }
-
-    private var avatarThumbnail: some View {
-        Group {
-            if let data = entry.avatarData, let image = UIImage(data: data) {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 28, height: 28)
-                    .clipShape(Circle())
-            } else {
-                Circle()
-                    .fill(Color(white: 0.2))
-                    .frame(width: 28, height: 28)
-                    .overlay {
-                        Image(systemName: "person.fill")
-                            .font(.system(size: 13))
-                            .foregroundStyle(Color(white: 0.5))
-                    }
-            }
         }
     }
 
@@ -199,18 +208,52 @@ private struct AddressEntryRow: View {
                 .font(.system(size: 12))
                 .foregroundStyle(.yellow)
         case .valid:
-            if let name = entry.profileName {
-                HStack(spacing: 8) {
-                    avatarThumbnail
-                    Text(name)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.white)
-                }
+            resolvedCard
+        }
+    }
+
+    private var resolvedCard: some View {
+        HStack(spacing: 10) {
+            avatarThumbnail
+
+            Text(entry.profileName ?? truncated(entry.text))
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.white)
+
+            Spacer()
+
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 20))
+                .foregroundStyle(accentLime)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color(white: 0.12), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var avatarThumbnail: some View {
+        Group {
+            if let data = entry.avatarData, let image = UIImage(data: data) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 28, height: 28)
+                    .clipShape(Circle())
             } else {
-                Text("Адрес найден")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.green)
+                Circle()
+                    .fill(Color(white: 0.2))
+                    .frame(width: 28, height: 28)
+                    .overlay {
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color(white: 0.5))
+                    }
             }
         }
+    }
+
+    private func truncated(_ address: String) -> String {
+        guard address.count > 12 else { return address }
+        return "\(address.prefix(6))...\(address.suffix(4))"
     }
 }

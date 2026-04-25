@@ -20,6 +20,7 @@ final class ChatModel {
     var recipientNickname: String?
     var recipientAvatarData: Data?
     var localAlias: String?
+    var isBlocked: Bool
 
     var isGroupChat: Bool {
         participantAddresses.count >= 2
@@ -33,5 +34,6 @@ final class ChatModel {
         self.lastMessageDate = nil
         self.lastMessagePreview = nil
         self.isRegisteredOnChain = false
+        self.isBlocked = false
     }
 }

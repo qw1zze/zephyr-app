@@ -14,11 +14,13 @@ extension VerifyMnemonicView {
         let state: Bool?
         let isFocused: Bool
 
+        private static let errorRed = Color(red: 1, green: 0.23, blue: 0.19)
+
         private var borderColor: Color {
             switch state {
             case .none:  return isFocused ? Color(white: 0.4) : Color(white: 0.15)
-            case true:   return .green.opacity(0.7)
-            case false:  return .red.opacity(0.8)
+            case true:   return AppTheme.accent
+            case false:  return Self.errorRed
             }
         }
 
@@ -26,10 +28,10 @@ extension VerifyMnemonicView {
             VStack(alignment: .leading, spacing: 6) {
                 Text(label)
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Color(white: 0.5))
+                    .foregroundStyle(AppTheme.textSecondary)
 
                 HStack {
-                    TextField("введите слово", text: $text)
+                    TextField("", text: $text)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
                         .foregroundStyle(.white)
@@ -37,17 +39,17 @@ extension VerifyMnemonicView {
 
                     if let state {
                         Image(systemName: state ? "checkmark.circle.fill" : "xmark.circle.fill")
-                            .foregroundStyle(state ? .green : .red)
-                            .font(.system(size: 16))
+                            .foregroundStyle(state ? AppTheme.accent : Self.errorRed)
+                            .font(.system(size: 18))
                             .transition(.scale.combined(with: .opacity))
                     }
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 14)
-                .background(Color(white: 0.08), in: RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 16)
+                .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: AppTheme.radiusInput))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(borderColor, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(borderColor, lineWidth: 1.5)
                 )
                 .animation(.easeInOut(duration: 0.2), value: state)
                 .animation(.easeInOut(duration: 0.15), value: isFocused)

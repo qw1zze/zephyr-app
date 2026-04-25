@@ -17,17 +17,35 @@ struct ChatView: View {
     @State private var isChatInfoPresented = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            messageList(keyboardTrigger: keyboardTrigger)
+        ZStack {
+            VStack(spacing: 0) {
+                messageList(keyboardTrigger: keyboardTrigger)
 
-            InputBarView(text: $viewModel.inputText, onSend: {
-                Task { await viewModel.sendMessage() }
-            }, onPickImage: {
-                isPickerPresented = true
-            }, onPickFile: {
-                isDocumentPickerPresented = true
-            })
+                InputBarView(text: $viewModel.inputText, onSend: {
+                    Task { await viewModel.sendMessage() }
+                }, onPickImage: {
+                    isPickerPresented = true
+                }, onPickFile: {
+                    isDocumentPickerPresented = true
+                })
+            }
+
+            if viewModel.recoveryState == .recovering {
+                Color.black.opacity(0.5)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+
+                VStack {
+                    Spacer()
+                    RecoveryProgressSheet {
+                        viewModel.cancelRecovery()
+                    }
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .ignoresSafeArea(edges: .bottom)
+            }
         }
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: viewModel.recoveryState == .recovering)
         .background(AppTheme.background.ignoresSafeArea())
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
             keyboardTrigger += 1
@@ -38,7 +56,11 @@ struct ChatView: View {
         .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
         .preferredColorScheme(.dark)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                BackButton()
+            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 menuButton
             }
@@ -87,7 +109,7 @@ struct ChatView: View {
 
     private var isRecoveryAlertPresented: Bool {
         switch viewModel.recoveryState {
-        case .done, .failed:
+        case .failed:
             return true
         default:
             return false
@@ -105,30 +127,25 @@ struct ChatView: View {
         }
     }
 
-    @ViewBuilder
     private var menuButton: some View {
-        if viewModel.recoveryState == .recovering {
-            ProgressView()
-                .tint(.white)
-        } else {
-            Menu {
-                Button {
-                    viewModel.recoverFromBlockchain()
-                } label: {
-                    Label("Восстановить переписку", systemImage: "arrow.clockwise.icloud")
-                }
-
-                Button {
-                    isChatInfoPresented = true
-                } label: {
-                    Label("О чате", systemImage: "info.circle")
-                }
+        Menu {
+            Button {
+                viewModel.recoverFromBlockchain()
             } label: {
-                Image(systemName: "ellipsis")
-                    .foregroundColor(AppTheme.accent)
+                Label("Восстановить переписку", systemImage: "arrow.clockwise.icloud")
             }
+
+            Button {
+                isChatInfoPresented = true
+            } label: {
+                Label("О чате", systemImage: "info.circle")
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .foregroundColor(AppTheme.accent)
         }
     }
+
 
     private func messageList(keyboardTrigger: Int) -> some View {
         ScrollViewReader { proxy in
@@ -153,7 +170,7 @@ struct ChatView: View {
                                 message: message,
                                 isOutgoing: message.senderAddress == viewModel.myAddress,
                                 senderLabel: viewModel.isGroupChat && message.senderAddress != viewModel.myAddress
-                                    ? formattedAddress(message.senderAddress)
+                                    ? (viewModel.displayName(for: message.senderAddress) ?? formattedAddress(message.senderAddress))
                                     : nil,
                                 downloadState: viewModel.messageDownloadStates[message.id],
                                 onRetry: message.senderAddress == viewModel.myAddress ? {

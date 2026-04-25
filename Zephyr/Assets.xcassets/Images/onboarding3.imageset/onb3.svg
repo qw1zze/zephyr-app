@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="140" y2="140" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1A1A1A"></stop>
+      <stop offset="100%" stop-color="#1f1f00"></stop>
+    </linearGradient>
+  </defs>
+
+  <!-- фон -->
+  <rect x="0" y="0" width="140" height="140" rx="40" fill="url(#bg)" stroke="#D9F000" stroke-opacity="0.18" stroke-width="1.5"></rect>
+
+  <!-- иконка -->
+  <g transform="translate(34,34)">
+    <circle cx="36" cy="36" r="20" stroke="#D9F000" stroke-width="2.5" fill="none"></circle>
+    <circle cx="36" cy="36" r="10" stroke="#D9F000" stroke-width="2" opacity="0.5" fill="none"></circle>
+    <path d="M36 16 L36 8" stroke="#D9F000" stroke-width="2.5" stroke-linecap="round"></path>
+    <path d="M36 56 L36 64" stroke="#D9F000" stroke-width="2.5" stroke-linecap="round"></path>
+    <path d="M16 36 L8 36" stroke="#D9F000" stroke-width="2.5" stroke-linecap="round"></path>
+    <path d="M56 36 L64 36" stroke="#D9F000" stroke-width="2.5" stroke-linecap="round"></path>
+    <circle cx="36" cy="36" r="3" fill="#D9F000"></circle>
+  </g>
+</svg>

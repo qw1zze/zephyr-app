@@ -42,6 +42,7 @@ final class ChatViewModel: ObservableObject {
     let recipientNickname: String?
     let localAlias: String?
     let recipientAvatarData: Data?
+    let participantNicknames: [String: String]
 
     var recipientAddress: String { recipientAddresses.first ?? "" }
     var isGroupChat: Bool { recipientAddresses.count > 1 }
@@ -51,15 +52,24 @@ final class ChatViewModel: ObservableObject {
     private var oldestLoadedDate: Date?
     private var chatIsRegisteredOnChain = false
     private var downloadTasks: [String: Task<Void, Never>] = [:]
+    private var recoveryTask: Task<Void, Never>?
 
-    init(chatId: String, recipientAddresses: [String], myAddress: String, recipientNickname: String? = nil, localAlias: String? = nil, recipientAvatarData: Data? = nil, container: ServiceContainer) {
+    init(chatId: String, recipientAddresses: [String], myAddress: String, recipientNickname: String? = nil, localAlias: String? = nil, recipientAvatarData: Data? = nil, participantNicknames: [String: String] = [:], container: ServiceContainer) {
         self.chatId = chatId
         self.recipientAddresses = recipientAddresses
         self.myAddress = myAddress
         self.recipientNickname = recipientNickname
         self.localAlias = localAlias
         self.recipientAvatarData = recipientAvatarData
+        self.participantNicknames = participantNicknames
         self.container = container
+    }
+
+    func displayName(for address: String) -> String? {
+        if let nickname = participantNicknames[address.lowercased()], !nickname.isEmpty {
+            return nickname
+        }
+        return nil
     }
 
     func loadInitialMessages() async {
@@ -307,6 +317,7 @@ final class ChatViewModel: ObservableObject {
 
     private func handleIncomingMessage(_ envelope: Envelope) async {
         guard envelope.chatId == chatId else { return }
+        guard (try? container.persistence.isChatBlocked(chatId: chatId)) != true else { return }
         let messageId = envelope.messageId
 
         if messages.first(where: { $0.id == messageId })?.isDecrypted == true { return }
@@ -419,11 +430,13 @@ final class ChatViewModel: ObservableObject {
 
     func recoverFromBlockchain() {
         guard recoveryState != .recovering else { return }
-        
+
         recoveryState = .recovering
-        Task {
+        recoveryTask = Task {
             do {
                 let recovered = try await container.blockchainRecovery.recover(chatId: chatId, recipientAddress: recipientAddress)
+
+                try Task.checkCancellation()
 
                 for model in recovered {
                     try? await container.persistence.saveMessage(model)
@@ -441,10 +454,17 @@ final class ChatViewModel: ObservableObject {
                 }
 
                 recoveryState = .done(newMessages: recovered.count)
+            } catch is CancellationError {
+                recoveryState = .idle
             } catch {
                 recoveryState = .failed(error.localizedDescription)
             }
         }
+    }
+
+    func cancelRecovery() {
+        recoveryTask?.cancel()
+        recoveryTask = nil
     }
 
     func groupedByDay() -> [(date: Date, messages: [MessageModel])] {

@@ -16,24 +16,36 @@ extension ChatView {
 
         @State private var showAttachmentMenu = false
 
+        private var canSend: Bool {
+            !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+
         var body: some View {
-            HStack(alignment: .bottom, spacing: 8) {
-                attachmentButton
+            VStack(spacing: 0) {
+                Divider()
+                    .background(AppTheme.separator)
 
-                messageField
+                HStack(alignment: .bottom, spacing: 10) {
+                    attachmentButton
 
-                sendButton
+                    inputFieldWithSend
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(AppTheme.background)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(AppTheme.background)
         }
 
         private var attachmentButton: some View {
             Button(action: { showAttachmentMenu = true }) {
-                Image(systemName: "paperclip")
-                    .font(.system(size: 22))
-                    .foregroundColor(AppTheme.textSecondary)
+                ZStack {
+                    Circle()
+                        .fill(AppTheme.surfaceHigh)
+                        .frame(width: 36, height: 36)
+                    Image(systemName: "plus")
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundColor(AppTheme.textSecondary)
+                }
             }
             .confirmationDialog("", isPresented: $showAttachmentMenu) {
                 Button("Изображение") { onPickImage() }
@@ -42,23 +54,30 @@ extension ChatView {
             }
         }
 
-        private var messageField: some View {
-            TextField("Сообщение", text: $text, axis: .vertical)
-                .lineLimit(1...5)
-                .foregroundStyle(AppTheme.textPrimary)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 9)
-                .background(AppTheme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: AppTheme.radiusInput))
+        private var inputFieldWithSend: some View {
+            HStack(alignment: .bottom, spacing: 6) {
+                TextField("Сообщение...", text: $text, axis: .vertical)
+                    .lineLimit(1...5)
+                    .foregroundStyle(AppTheme.textPrimary)
+                    .tint(AppTheme.accent)
+                    .padding(.leading, 14)
+                    .padding(.trailing, 6)
+                    .padding(.vertical, 9)
+
+                sendButton
+                    .padding(.bottom, 5)
+                    .padding(.trailing, 5)
+            }
+            .background(AppTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.radiusInput))
         }
 
         private var sendButton: some View {
-            let canSend = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            return Button(action: onSend) {
+            Button(action: onSend) {
                 Image(systemName: "arrow.up")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(.black)
-                    .frame(width: 34, height: 34)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(canSend ? .black : AppTheme.textTertiary)
+                    .frame(width: 30, height: 30)
                     .background(canSend ? AppTheme.accent : AppTheme.surfaceHigh)
                     .clipShape(Circle())
             }

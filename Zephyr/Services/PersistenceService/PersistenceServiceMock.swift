@@ -62,6 +62,10 @@ final class PersistenceServiceMock: PersistenceService {
         chats.first { $0.id == chatId }?.isRegisteredOnChain ?? false
     }
 
+    func isChatBlocked(chatId: String) throws -> Bool {
+        chats.first { $0.id == chatId }?.isBlocked ?? false
+    }
+
     func markChatRegistered(chatId: String) throws {
         chats.first { $0.id == chatId }?.isRegisteredOnChain = true
     }
@@ -86,6 +90,10 @@ final class PersistenceServiceMock: PersistenceService {
         guard let chat = chats.first(where: { $0.id == chatId }) else { return }
         chat.lastMessagePreview = text
         chat.lastMessageDate = date
+    }
+
+    func setBlocked(chatId: String, isBlocked: Bool) throws {
+        chats.first { $0.id == chatId }?.isBlocked = isBlocked
     }
 
     func deleteChat(chatId: String) throws {

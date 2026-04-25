@@ -105,6 +105,12 @@ final class PersistenceServiceInstance: PersistenceService {
         return try context.fetch(descriptor).first?.isRegisteredOnChain ?? false
     }
 
+    func isChatBlocked(chatId: String) throws -> Bool {
+        var descriptor = FetchDescriptor<ChatModel>(predicate: #Predicate { $0.id == chatId })
+        descriptor.fetchLimit = 1
+        return try context.fetch(descriptor).first?.isBlocked ?? false
+    }
+
     func markChatRegistered(chatId: String) throws {
         var descriptor = FetchDescriptor<ChatModel>(
             predicate: #Predicate { $0.id == chatId }
@@ -172,6 +178,14 @@ final class PersistenceServiceInstance: PersistenceService {
         guard let chat = try context.fetch(descriptor).first else { return }
         chat.lastMessagePreview = text
         chat.lastMessageDate = date
+        try context.save()
+    }
+
+    func setBlocked(chatId: String, isBlocked: Bool) throws {
+        var descriptor = FetchDescriptor<ChatModel>(predicate: #Predicate { $0.id == chatId })
+        descriptor.fetchLimit = 1
+        guard let chat = try context.fetch(descriptor).first else { return }
+        chat.isBlocked = isBlocked
         try context.save()
     }
 

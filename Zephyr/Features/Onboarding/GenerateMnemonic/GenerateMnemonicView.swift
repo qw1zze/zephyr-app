@@ -16,10 +16,10 @@ struct GenerateMnemonicView: View {
         ZStack {
             AppTheme.background.ignoresSafeArea()
 
-            VStack(spacing: 0) {
+            VStack(spacing: 15) {
                 warningBanner
                     .padding(.horizontal, 20)
-                    .padding(.top, 16)
+                    .padding(.top, 20)
 
                 if viewModel.isLoading {
                     Spacer()
@@ -31,7 +31,7 @@ struct GenerateMnemonicView: View {
                         .padding(.horizontal, 20)
                         .padding(.top, 20)
 
-                    HStack(spacing: 12) {
+                    HStack(spacing: 8) {
                         revealButton
                         copyButton
                     }
@@ -48,24 +48,41 @@ struct GenerateMnemonicView: View {
         }
         .navigationTitle("Секретная фраза")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: { viewModel.didTapBack() }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(NewAppTheme.Colors.lemon)
+                }
+            }
+        }
         .preferredColorScheme(.dark)
         .task { await viewModel.generateMnemonic() }
     }
 
     private var warningBanner: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: 10) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.yellow)
-                .font(.system(size: 16))
-                .padding(.top, 1)
+                .foregroundStyle(NewAppTheme.Colors.lemon)
+                .font(.system(size: 15, weight: .medium))
+                .padding(.top, 4)
 
-            Text("Запишите эти 12 слов в безопасном месте. Они являются единственным способом восстановить кошелёк.")
-                .font(.system(size: 13, weight: .regular))
-                .foregroundStyle(Color(white: 0.75))
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Запишите эти 12 слов в безопасном месте. Они являются единственным способом восстановить кошелёк.")
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundStyle(Color(white: 0.6))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
-        .padding(14)
-        .background(Color(white: 0.1), in: RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 15)
+        .padding(.vertical, 15)
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(NewAppTheme.Colors.lemon.opacity(0.3), lineWidth: 1)
+        }
+        .background(NewAppTheme.Colors.bg3, in: RoundedRectangle(cornerRadius: 16))
     }
 
     private var wordGrid: some View {
@@ -82,11 +99,15 @@ struct GenerateMnemonicView: View {
                 viewModel.isRevealed ? "Скрыть" : "Показать",
                 systemImage: viewModel.isRevealed ? "eye.slash" : "eye"
             )
-            .font(.system(size: 14, weight: .medium))
+            .font(.system(size: 15, weight: .medium))
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(Color(white: 0.12), in: RoundedRectangle(cornerRadius: 10))
+            .padding(.vertical, 15)
+            .overlay {
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(.white.opacity(0.1), lineWidth: 1)
+            }
+            .background(NewAppTheme.Colors.bg3, in: RoundedRectangle(cornerRadius: 14))
         }
     }
 
@@ -94,13 +115,20 @@ struct GenerateMnemonicView: View {
         Button(action: viewModel.copyToClipboard) {
             Label(
                 viewModel.isCopied ? "Скопировано" : "Скопировать",
-                systemImage: viewModel.isCopied ? "checkmark" : "doc.on.doc"
+                systemImage: "doc.on.doc"
             )
             .font(.system(size: 14, weight: .medium))
-            .foregroundStyle(viewModel.isCopied ? .green : .white)
+            .foregroundStyle(viewModel.isCopied ? .black : .white)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(Color(white: 0.12), in: RoundedRectangle(cornerRadius: 10))
+            .padding(.vertical, 15)
+            .overlay {
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(.white.opacity(0.1), lineWidth: 1)
+            }
+            .background(
+                viewModel.isCopied ? NewAppTheme.Colors.lemon.opacity(0.8) : NewAppTheme.Colors.bg3,
+                in: RoundedRectangle(cornerRadius: 10)
+            )
         }
         .animation(.easeInOut(duration: 0.2), value: viewModel.isCopied)
     }
@@ -108,15 +136,9 @@ struct GenerateMnemonicView: View {
     private var continueButton: some View {
         Button(action: viewModel.didTapContinue) {
             Text("Продолжить")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(viewModel.canContinue ? .black : AppTheme.textTertiary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(
-                    RoundedRectangle(cornerRadius: AppTheme.radiusPill)
-                        .fill(viewModel.canContinue ? AppTheme.accent : AppTheme.surface)
-                )
         }
+        .buttonStyle(ZephyrButtonStyle(filled: true))
+        .opacity(viewModel.canContinue ? 1 : 0.5)
         .disabled(!viewModel.canContinue)
         .animation(.easeInOut(duration: 0.2), value: viewModel.canContinue)
     }
@@ -143,7 +165,11 @@ private struct WordCell: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 10)
         .padding(.vertical, 10)
-        .background(Color(white: 0.08), in: RoundedRectangle(cornerRadius: 10))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(.white.opacity(0.1), lineWidth: 1)
+        }
+        .background(NewAppTheme.Colors.bg3, in: RoundedRectangle(cornerRadius: 10))
         .animation(.easeInOut(duration: 0.3), value: isRevealed)
     }
 }

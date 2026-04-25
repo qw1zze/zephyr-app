@@ -46,9 +46,10 @@ extension ChatListView {
                             .frame(width: 50, height: 50)
                             .clipShape(Circle())
                     } else {
-                        Image(systemName: chat.isGroupChat ? "person.3.fill" : "person.fill")
-                            .font(.system(size: chat.isGroupChat ? 18 : 22))
-                            .foregroundStyle(AppTheme.textSecondary)
+                        Image(chat.isGroupChat ? "groupAvatar" : "chatAvatar")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: chat.isGroupChat ? 26 : 22)
                     }
                 }
         }
@@ -59,7 +60,11 @@ extension ChatListView {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(AppTheme.textPrimary)
 
-                if let preview = chat.lastMessagePreview {
+                if chat.isBlocked {
+                    Text("Заблокирован")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.red.opacity(0.8))
+                } else if let preview = chat.lastMessagePreview {
                     Text(preview)
                         .font(.system(size: 13))
                         .foregroundStyle(AppTheme.textSecondary)

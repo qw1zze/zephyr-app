@@ -34,16 +34,18 @@ final class ChatListViewModel: ObservableObject {
     @Published private(set) var isCreatingChat = false
     @Published private(set) var createdChatID: String?
     @Published private(set) var isRestoringHistory = false
+    @Published private(set) var unblockAlertChat: ChatModel? = nil
 
     var canCreateChat: Bool {
         !isCreatingChat && !addressEntries.isEmpty && addressEntries.allSatisfy { $0.validation == .valid }
     }
 
     private let container: ServiceContainer
-    private let onChatSelected: (String, [String], String?, String?, Data?) -> Void
+    private let onChatSelected: (String, [String], String?, String?, Data?, [String: String]) -> Void
     private var validationTasks: [UUID: Task<Void, Never>] = [:]
+    private var restoreTask: Task<Void, Never>?
 
-    init(container: ServiceContainer, onChatSelected: @escaping (String, [String], String?, String?, Data?) -> Void) {
+    init(container: ServiceContainer, onChatSelected: @escaping (String, [String], String?, String?, Data?, [String: String]) -> Void) {
         self.container = container
         self.onChatSelected = onChatSelected
     }
@@ -157,7 +159,16 @@ final class ChatListViewModel: ObservableObject {
 
     func selectChat(_ chat: ChatModel) {
         let recipients = chat.isGroupChat ? chat.participantAddresses : [chat.recipientAddress]
-        onChatSelected(chat.id, recipients, chat.recipientNickname, chat.localAlias, chat.recipientAvatarData)
+        var participantNicknames: [String: String] = [:]
+        if chat.isGroupChat {
+            for address in chat.participantAddresses {
+                if let dmChat = try? container.persistence.chat(forAddress: address),
+                   let nickname = dmChat.recipientNickname, !nickname.isEmpty {
+                    participantNicknames[address.lowercased()] = nickname
+                }
+            }
+        }
+        onChatSelected(chat.id, recipients, chat.recipientNickname, chat.localAlias, chat.recipientAvatarData, participantNicknames)
     }
 
     func renameChat(_ chat: ChatModel, name: String) {
@@ -172,6 +183,55 @@ final class ChatListViewModel: ObservableObject {
             chats.removeAll { $0.id == chat.id }
         } catch {
             self.error = error.localizedDescription
+        }
+    }
+
+    func blockChat(_ chat: ChatModel) {
+        do {
+            try container.persistence.setBlocked(chatId: chat.id, isBlocked: true)
+            chat.isBlocked = true
+            objectWillChange.send()
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    func unblockChat(_ chat: ChatModel) {
+        do {
+            try container.persistence.setBlocked(chatId: chat.id, isBlocked: false)
+            chat.isBlocked = false
+            objectWillChange.send()
+            unblockAlertChat = chat
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    func dismissUnblockAlert() {
+        unblockAlertChat = nil
+    }
+
+    func restoreChat(_ chat: ChatModel) {
+        Task {
+            do {
+                let primaryRecipient = chat.isGroupChat ? (chat.participantAddresses.first ?? chat.recipientAddress) : chat.recipientAddress
+                let recovered = try await container.blockchainRecovery.recover(chatId: chat.id, recipientAddress: primaryRecipient)
+                for model in recovered {
+                    try? await container.persistence.saveMessage(model)
+                }
+                if let last = recovered.max(by: { $0.timestamp < $1.timestamp }) {
+                    let preview: String
+                    switch last.messageType {
+                    case "image": preview = "📷 Изображение"
+                    case "file": preview = last.fileName.map { "📎 \($0)" } ?? "Файл"
+                    default: preview = last.plaintext ?? ""
+                    }
+                    try? await container.persistence.updateChatLastMessage(chatId: chat.id, text: preview, date: last.timestamp)
+                }
+                chats = try container.persistence.fetchChats()
+            } catch {
+                self.error = error.localizedDescription
+            }
         }
     }
 
@@ -199,6 +259,14 @@ final class ChatListViewModel: ObservableObject {
 
     private func handleIncomingMessage(_ envelope: Envelope) async {
         do {
+            if let existing = chats.first(where: { $0.id == envelope.chatId }), existing.isBlocked {
+                return
+            }
+            let blockedAddresses = chats.filter { $0.isBlocked }.map { $0.recipientAddress.lowercased() }
+            if blockedAddresses.contains(envelope.senderAddr.lowercased()) {
+                return
+            }
+
             if !chats.contains(where: { $0.id == envelope.chatId }) {
                 if envelope.recipientAddrs.count > 1 {
                     let myAddress = (try? container.keychain.load(key: KeychainKeys.address))
@@ -236,9 +304,9 @@ final class ChatListViewModel: ObservableObject {
     func restoreAllChats() {
         guard !isRestoringHistory else { return }
         isRestoringHistory = true
-        Task {
+        restoreTask = Task {
             defer { isRestoringHistory = false }
-            
+
             do {
                 let myAddress = (try? container.keychain.load(key: KeychainKeys.address))
                     .flatMap { String(data: $0, encoding: .utf8) } ?? ""
@@ -246,6 +314,8 @@ final class ChatListViewModel: ObservableObject {
                 let chatIds = try await container.ethereum.getUserChats(userAddress: myAddress)
 
                 for chatId in chatIds {
+                    try Task.checkCancellation()
+
                     let allParticipants = (try? await container.ethereum.getChatParticipants(chatId: chatId)) ?? []
                     let otherParticipants = allParticipants.filter { $0.lowercased() != myAddress.lowercased() }
                     guard !otherParticipants.isEmpty else { continue }
@@ -283,10 +353,18 @@ final class ChatListViewModel: ObservableObject {
                 }
 
                 chats = try container.persistence.fetchChats()
+            } catch is CancellationError {
+                
             } catch {
                 self.error = error.localizedDescription
             }
         }
+    }
+
+    func cancelRestore() {
+        restoreTask?.cancel()
+        restoreTask = nil
+        isRestoringHistory = false
     }
 
     func resetCreateChat() {

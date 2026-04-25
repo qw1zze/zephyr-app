@@ -46,13 +46,20 @@ struct MainTabView: View {
 
     @State private var selectedTab = 0
     @State private var tabBarVisible = true
+    @State private var isRestoringChatHistory = false
+    @State private var cancelChatRestore: (() -> Void)? = nil
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            ChatListCoordinatorView(container: container, tabBarVisible: $tabBarVisible)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .opacity(selectedTab == 0 ? 1 : 0)
-                .allowsHitTesting(selectedTab == 0)
+            ChatListCoordinatorView(
+                container: container,
+                tabBarVisible: $tabBarVisible,
+                isRestoringHistory: $isRestoringChatHistory,
+                onCancelActionAvailable: { action in cancelChatRestore = action }
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .opacity(selectedTab == 0 ? 1 : 0)
+            .allowsHitTesting(selectedTab == 0)
 
             SettingsCoordinatorView(container: container, onLogout: onLogout)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -63,7 +70,23 @@ struct MainTabView: View {
                 CustomTabBar(selectedTab: $selectedTab)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
+
+            if isRestoringChatHistory {
+                Color.black.opacity(0.5)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+
+                VStack {
+                    Spacer()
+                    RecoveryProgressSheet {
+                        cancelChatRestore?()
+                    }
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .ignoresSafeArea(edges: .bottom)
+            }
         }
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: isRestoringChatHistory)
         .ignoresSafeArea(edges: .bottom)
         .preferredColorScheme(.dark)
     }
@@ -108,10 +131,14 @@ struct CustomTabBar: View {
 struct ChatListCoordinatorView: View {
     @StateObject private var coordinator: ChatListCoordinator
     @Binding var tabBarVisible: Bool
+    @Binding var isRestoringHistory: Bool
+    let onCancelActionAvailable: (@escaping () -> Void) -> Void
 
-    init(container: ServiceContainer, tabBarVisible: Binding<Bool>) {
+    init(container: ServiceContainer, tabBarVisible: Binding<Bool>, isRestoringHistory: Binding<Bool>, onCancelActionAvailable: @escaping (@escaping () -> Void) -> Void) {
         _coordinator = StateObject(wrappedValue: ChatListCoordinator(container: container))
         _tabBarVisible = tabBarVisible
+        _isRestoringHistory = isRestoringHistory
+        self.onCancelActionAvailable = onCancelActionAvailable
     }
 
     var body: some View {
@@ -124,6 +151,14 @@ struct ChatListCoordinatorView: View {
         .onChange(of: coordinator.path.isEmpty) { _, isEmpty in
             withAnimation(.easeInOut(duration: 0.3)) {
                 tabBarVisible = isEmpty
+            }
+        }
+        .onReceive(coordinator.$isRestoringHistory) { value in
+            isRestoringHistory = value
+        }
+        .onAppear {
+            onCancelActionAvailable { [weak coordinator] in
+                coordinator?.cancelRestore()
             }
         }
     }

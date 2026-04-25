@@ -14,9 +14,22 @@
 		8EA59E132F64626C00ED3381 /* Zephyr.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Zephyr.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		8EF250A52FA01AA80085E585 /* Exceptions for "Zephyr" folder in "Zephyr" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 8EA59E122F64626C00ED3381 /* Zephyr */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		8EA59E152F64626C00ED3381 /* Zephyr */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				8EF250A52FA01AA80085E585 /* Exceptions for "Zephyr" folder in "Zephyr" target */,
+			);
 			path = Zephyr;
 			sourceTree = "<group>";
 		};
@@ -265,6 +278,8 @@
 				DEVELOPMENT_TEAM = UM76JVRRXH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Zephyr/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Нужна камера для сканирования QR-кода с Ethereum-адресом";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -297,6 +312,8 @@
 				DEVELOPMENT_TEAM = UM76JVRRXH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Zephyr/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Нужна камера для сканирования QR-кода с Ethereum-адресом";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
