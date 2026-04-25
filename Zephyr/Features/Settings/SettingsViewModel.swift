@@ -14,13 +14,17 @@ final class SettingsViewModel: ObservableObject {
     @Published var avatarImage: UIImage? = nil
     @Published var address: String = ""
     @Published var isLoggingOut = false
+    @Published var isSaving = false
+    @Published var saveError: String? = nil
+    @Published var savedSuccessfully = false
 
     private let container: ServiceContainer
     private let onLogout: () -> Void
 
     private enum StorageKeys {
         static let nickname = "zephyr.nickname"
-        static let avatar   = "zephyr.avatar"
+        static let avatar = "zephyr.avatar"
+        static let profileCID = "zephyr.profileCID"
     }
 
     init(container: ServiceContainer, onLogout: @escaping () -> Void) {
@@ -40,14 +44,42 @@ final class SettingsViewModel: ObservableObject {
         }
     }
 
-    func saveNickname() {
-        UserDefaults.standard.set(nickname, forKey: StorageKeys.nickname)
-    }
-
     func setAvatar(_ image: UIImage) {
         avatarImage = image
         if let data = image.jpegData(compressionQuality: 0.8) {
             UserDefaults.standard.set(data, forKey: StorageKeys.avatar)
+        }
+    }
+
+    func saveProfile() {
+        let trimmed = nickname.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+
+        Task {
+            isSaving = true
+            saveError = nil
+            defer { isSaving = false }
+
+            do {
+                var avatarCID = ""
+                if let avatarData = UserDefaults.standard.data(forKey: StorageKeys.avatar) {
+                    avatarCID = try await container.storage.upload(data: avatarData)
+                }
+
+                let profileCID = try await container.profile.saveProfile(name: trimmed, avatar: avatarCID)
+
+                let txHash = try await container.ethereum.setProfileCID(profileCID)
+                if !txHash.isEmpty {
+                    try await container.ethereum.waitForConfirmation(txHash: txHash)
+                }
+
+                UserDefaults.standard.set(trimmed, forKey: StorageKeys.nickname)
+                UserDefaults.standard.set(profileCID, forKey: StorageKeys.profileCID)
+
+                savedSuccessfully = true
+            } catch {
+                saveError = error.localizedDescription
+            }
         }
     }
 
@@ -60,6 +92,7 @@ final class SettingsViewModel: ObservableObject {
         try? container.persistence.deleteAllData()
         UserDefaults.standard.removeObject(forKey: StorageKeys.nickname)
         UserDefaults.standard.removeObject(forKey: StorageKeys.avatar)
+        UserDefaults.standard.removeObject(forKey: StorageKeys.profileCID)
         onLogout()
     }
 }

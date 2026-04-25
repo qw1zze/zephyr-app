@@ -39,6 +39,7 @@ final class ChatViewModel: ObservableObject {
     let chatId: String
     let recipientAddresses: [String]
     let myAddress: String
+    let recipientNickname: String?
 
     var recipientAddress: String { recipientAddresses.first ?? "" }
     var isGroupChat: Bool { recipientAddresses.count > 1 }
@@ -49,10 +50,11 @@ final class ChatViewModel: ObservableObject {
     private var chatIsRegisteredOnChain = false
     private var downloadTasks: [String: Task<Void, Never>] = [:]
 
-    init(chatId: String, recipientAddresses: [String], myAddress: String, container: ServiceContainer) {
+    init(chatId: String, recipientAddresses: [String], myAddress: String, recipientNickname: String? = nil, container: ServiceContainer) {
         self.chatId = chatId
         self.recipientAddresses = recipientAddresses
         self.myAddress = myAddress
+        self.recipientNickname = recipientNickname
         self.container = container
     }
 

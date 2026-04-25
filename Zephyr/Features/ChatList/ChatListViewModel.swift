@@ -20,6 +20,8 @@ struct AddressEntry: Identifiable, Equatable {
     var id = UUID()
     var text: String = ""
     var validation: AddressValidation = .idle
+    var profileName: String? = nil
+    var avatarData: Data? = nil
 }
 
 @MainActor
@@ -38,10 +40,10 @@ final class ChatListViewModel: ObservableObject {
     }
 
     private let container: ServiceContainer
-    private let onChatSelected: (String, [String]) -> Void
+    private let onChatSelected: (String, [String], String?) -> Void
     private var validationTasks: [UUID: Task<Void, Never>] = [:]
 
-    init(container: ServiceContainer, onChatSelected: @escaping (String, [String]) -> Void) {
+    init(container: ServiceContainer, onChatSelected: @escaping (String, [String], String?) -> Void) {
         self.container = container
         self.onChatSelected = onChatSelected
     }
@@ -81,15 +83,21 @@ final class ChatListViewModel: ObservableObject {
 
         guard !value.isEmpty else {
             addressEntries[index].validation = .idle
+            addressEntries[index].profileName = nil
+            addressEntries[index].avatarData = nil
             return
         }
 
         guard isValidEthereumAddress(value) else {
             addressEntries[index].validation = .invalidFormat
+            addressEntries[index].profileName = nil
+            addressEntries[index].avatarData = nil
             return
         }
 
         addressEntries[index].validation = .checking
+        addressEntries[index].profileName = nil
+        addressEntries[index].avatarData = nil
 
         let task = Task {
             do {
@@ -98,14 +106,21 @@ final class ChatListViewModel: ObservableObject {
                 return
             }
             guard !Task.isCancelled else { return }
-            guard let idx = addressEntries.firstIndex(where: { $0.id == id }) else { return }
+            guard addressEntries.contains(where: { $0.id == id }) else { return }
             do {
                 let key = try await container.ethereum.getPublicKey(address: value)
                 guard !Task.isCancelled else { return }
-                addressEntries[idx].validation = key != nil ? .valid : .notFound
+                guard let idx2 = addressEntries.firstIndex(where: { $0.id == id }) else { return }
+                guard key != nil else {
+                    addressEntries[idx2].validation = .notFound
+                    return
+                }
+                addressEntries[idx2].validation = .valid
+                await fetchProfile(entryID: id, address: value)
             } catch {
                 guard !Task.isCancelled else { return }
-                addressEntries[idx].validation = .notFound
+                guard let idx2 = addressEntries.firstIndex(where: { $0.id == id }) else { return }
+                addressEntries[idx2].validation = .notFound
             }
         }
         validationTasks[id] = task
@@ -125,6 +140,8 @@ final class ChatListViewModel: ObservableObject {
             if recipientAddresses.count == 1 {
                 let chatId = generateChatId(addresses: [myAddress, recipientAddresses[0]])
                 chat = try container.persistence.createChat(id: chatId, recipientAddress: recipientAddresses[0])
+                chat.recipientNickname = addressEntries.first?.profileName
+                chat.recipientAvatarData = addressEntries.first?.avatarData
             } else {
                 let chatId = generateChatId(addresses: [myAddress] + recipientAddresses)
                 chat = try container.persistence.createChat(id: chatId, participantAddresses: recipientAddresses)
@@ -140,7 +157,7 @@ final class ChatListViewModel: ObservableObject {
 
     func selectChat(_ chat: ChatModel) {
         let recipients = chat.isGroupChat ? chat.participantAddresses : [chat.recipientAddress]
-        onChatSelected(chat.id, recipients)
+        onChatSelected(chat.id, recipients, chat.recipientNickname)
     }
 
     func deleteChat(_ chat: ChatModel) {
@@ -229,8 +246,17 @@ final class ChatListViewModel: ObservableObject {
 
                     if otherParticipants.count >= 2 {
                         _ = try? container.persistence.createChat(id: chatId, participantAddresses: otherParticipants)
-                    } else if !chats.contains(where: { $0.id == chatId }) {
-                        _ = try? container.persistence.createChat(id: chatId, recipientAddress: otherParticipants[0])
+                    } else {
+                        let chat: ChatModel
+                        if let existing = chats.first(where: { $0.id == chatId }) {
+                            chat = existing
+                        } else {
+                            guard let created = try? container.persistence.createChat(id: chatId, recipientAddress: otherParticipants[0]) else { continue }
+                            chat = created
+                        }
+                        let (name, avatarData) = await fetchProfileForAddress(otherParticipants[0])
+                        chat.recipientNickname = name
+                        chat.recipientAvatarData = avatarData
                     }
 
                     let primaryRecipient = otherParticipants[0]
@@ -264,6 +290,26 @@ final class ChatListViewModel: ObservableObject {
         validationTasks.removeAll()
         addressEntries = [AddressEntry()]
         createdChatID = nil
+    }
+
+    private func fetchProfileForAddress(_ address: String) async -> (name: String?, avatarData: Data?) {
+        guard let cid = try? await container.ethereum.getProfileCID(address: address),
+              !cid.isEmpty else { return (nil, nil) }
+        guard let profileData = try? await container.profile.getProfile(cid: cid) else { return (nil, nil) }
+        let name = profileData.name.isEmpty ? nil : profileData.name
+        var avatarData: Data? = nil
+        if !profileData.avatar.isEmpty {
+            avatarData = try? await container.storage.download(cid: profileData.avatar)
+        }
+        return (name, avatarData)
+    }
+
+    private func fetchProfile(entryID: UUID, address: String) async {
+        let (name, avatarData) = await fetchProfileForAddress(address)
+        guard !Task.isCancelled,
+              let idx = addressEntries.firstIndex(where: { $0.id == entryID }) else { return }
+        addressEntries[idx].profileName = name
+        addressEntries[idx].avatarData = avatarData
     }
 
     private func isValidEthereumAddress(_ address: String) -> Bool {

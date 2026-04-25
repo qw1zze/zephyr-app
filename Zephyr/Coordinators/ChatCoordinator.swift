@@ -13,6 +13,7 @@ final class ChatCoordinator: ObservableObject {
     private let container: ServiceContainer
     private let chatId: String
     private let recipientAddresses: [String]
+    private let recipientNickname: String?
 
     private lazy var cachedViewModel: ChatViewModel = buildViewModel()
 
@@ -20,9 +21,10 @@ final class ChatCoordinator: ObservableObject {
         cachedViewModel
     }
 
-    init(chatId: String, recipientAddresses: [String], container: ServiceContainer) {
+    init(chatId: String, recipientAddresses: [String], recipientNickname: String? = nil, container: ServiceContainer) {
         self.chatId = chatId
         self.recipientAddresses = recipientAddresses
+        self.recipientNickname = recipientNickname
         self.container = container
     }
 
@@ -33,6 +35,7 @@ final class ChatCoordinator: ObservableObject {
             chatId: chatId,
             recipientAddresses: recipientAddresses,
             myAddress: address,
+            recipientNickname: recipientNickname,
             container: container
         )
     }

@@ -48,4 +48,12 @@ final class BlockchainServiceMock: BlockchainService {
     func getUserChats(userAddress: String) async throws -> [String] {
         return []
     }
+
+    func setProfileCID(_ cid: String) async throws -> String {
+        return "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+    }
+
+    func getProfileCID(address: String) async throws -> String {
+        return ""
+    }
 }

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct CreateChatSheet: View {
     @ObservedObject var viewModel: ChatListViewModel
@@ -154,6 +155,27 @@ private struct AddressEntryRow: View {
         }
     }
 
+    private var avatarThumbnail: some View {
+        Group {
+            if let data = entry.avatarData, let image = UIImage(data: data) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 28, height: 28)
+                    .clipShape(Circle())
+            } else {
+                Circle()
+                    .fill(Color(white: 0.2))
+                    .frame(width: 28, height: 28)
+                    .overlay {
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color(white: 0.5))
+                    }
+            }
+        }
+    }
+
     @ViewBuilder
     private func validationLabel(for validation: AddressValidation) -> some View {
         switch validation {
@@ -177,9 +199,18 @@ private struct AddressEntryRow: View {
                 .font(.system(size: 12))
                 .foregroundStyle(.yellow)
         case .valid:
-            Text("Адрес найден")
-                .font(.system(size: 12))
-                .foregroundStyle(.green)
+            if let name = entry.profileName {
+                HStack(spacing: 8) {
+                    avatarThumbnail
+                    Text(name)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.white)
+                }
+            } else {
+                Text("Адрес найден")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.green)
+            }
         }
     }
 }

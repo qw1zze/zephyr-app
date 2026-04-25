@@ -21,12 +21,19 @@ struct SettingsView: View {
                 VStack(spacing: 20) {
                     avatarSection
                     nicknameSection
+                    if let error = viewModel.saveError {
+                        errorBanner(error)
+                    }
                     addressSection
                     Spacer(minLength: 32)
                     logoutButton
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 24)
+            }
+
+            if viewModel.isSaving {
+                savingOverlay
             }
         }
         .navigationTitle("Настройки")
@@ -46,6 +53,11 @@ struct SettingsView: View {
                       let image = UIImage(data: data) else { return }
                 viewModel.setAvatar(image)
                 photoItem = nil
+            }
+        }
+        .onChange(of: viewModel.savedSuccessfully) { _, success in
+            if success {
+                viewModel.savedSuccessfully = false
             }
         }
         .alert("Выйти из аккаунта?", isPresented: $showLogoutAlert) {
@@ -69,6 +81,7 @@ struct SettingsView: View {
                 }
             }
             .buttonStyle(.plain)
+            .disabled(viewModel.isSaving)
 
             Text("Нажмите, чтобы изменить фото")
                 .font(.system(size: 12))
@@ -113,11 +126,12 @@ struct SettingsView: View {
                     .foregroundStyle(AppTheme.textPrimary)
                     .font(.system(size: 15))
                     .submitLabel(.done)
-                    .onSubmit { viewModel.saveNickname() }
+                    .onSubmit { viewModel.saveProfile() }
+                    .disabled(viewModel.isSaving)
 
-                if !viewModel.nickname.isEmpty {
+                if !viewModel.nickname.isEmpty && !viewModel.isSaving {
                     Button {
-                        viewModel.saveNickname()
+                        viewModel.saveProfile()
                     } label: {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 20))
@@ -129,6 +143,28 @@ struct SettingsView: View {
             .padding(.vertical, 12)
             .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: AppTheme.radiusCard))
         }
+    }
+
+    private func errorBanner(_ message: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+            Text(message)
+                .font(.system(size: 13))
+                .foregroundStyle(AppTheme.textPrimary)
+                .multilineTextAlignment(.leading)
+            Spacer()
+            Button {
+                viewModel.saveError = nil
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: AppTheme.radiusCard))
     }
 
     private var addressSection: some View {
@@ -179,8 +215,24 @@ struct SettingsView: View {
             .background(Color.red.opacity(0.85), in: RoundedRectangle(cornerRadius: AppTheme.radiusPill))
             .foregroundStyle(.white)
         }
-        .disabled(viewModel.isLoggingOut)
+        .disabled(viewModel.isLoggingOut || viewModel.isSaving)
         .padding(.bottom, 32)
+    }
+
+    private var savingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.45).ignoresSafeArea()
+            VStack(spacing: 16) {
+                ProgressView()
+                    .scaleEffect(1.4)
+                    .tint(AppTheme.accent)
+                Text("Сохранение профиля…")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            .padding(28)
+            .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: AppTheme.radiusCard))
+        }
     }
 
     private func sectionLabel(_ text: String) -> some View {

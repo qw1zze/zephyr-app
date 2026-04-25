@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 extension ChatListView {
     struct ChatRowView: View {
@@ -36,9 +37,19 @@ extension ChatListView {
                 .fill(AppTheme.surface)
                 .frame(width: 50, height: 50)
                 .overlay {
-                    Image(systemName: chat.isGroupChat ? "person.3.fill" : "person.fill")
-                        .font(.system(size: chat.isGroupChat ? 18 : 22))
-                        .foregroundStyle(AppTheme.textSecondary)
+                    if let data = chat.recipientAvatarData,
+                       !chat.isGroupChat,
+                       let image = UIImage(data: data) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 50, height: 50)
+                            .clipShape(Circle())
+                    } else {
+                        Image(systemName: chat.isGroupChat ? "person.3.fill" : "person.fill")
+                            .font(.system(size: chat.isGroupChat ? 18 : 22))
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
                 }
         }
         
@@ -60,6 +71,9 @@ extension ChatListView {
         private var chatDisplayName: String {
             if chat.isGroupChat {
                 return "Группа · \(chat.participantAddresses.count + 1) участника"
+            }
+            if let nickname = chat.recipientNickname, !nickname.isEmpty {
+                return nickname
             }
             return shortAddress(chat.recipientAddress)
         }

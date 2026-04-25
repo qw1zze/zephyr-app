@@ -364,6 +364,51 @@ final class BlockchainServiceInstance: BlockchainService {
         return chatIds.map { $0.toHexString() }
     }
 
+    func setProfileCID(_ cid: String) async throws -> String {
+        let web3 = try await web3WithSigner()
+        let from = try userAddress()
+        let contract = try contract(web3: web3)
+
+        guard let write = contract.createWriteOperation("setProfileCID", parameters: [cid] as [AnyObject]) else {
+            throw EthereumError.contractError("Не удалось создать транзакцию setProfileCID")
+        }
+
+        write.transaction.from = from
+        write.transaction.chainID = 560048
+
+        do {
+            let result = try await write.writeToChain(
+                password: "",
+                policies: .init(
+                    noncePolicy: .latest,
+                    gasLimitPolicy: .automatic,
+                    gasPricePolicy: .manual(1589398120),
+                    maxFeePerGasPolicy: .automatic,
+                    maxPriorityFeePerGasPolicy: .automatic
+                )
+            )
+            return result.hash
+        } catch {
+            if isAlreadyKnown(error) { return "" }
+            throw error
+        }
+    }
+
+    func getProfileCID(address: String) async throws -> String {
+        let web3 = try await web3ReadOnly()
+        let contract = try contract(web3: web3)
+
+        guard let ethAddr = EthereumAddress(address) else {
+            throw EthereumError.contractError("Неверный адрес: \(address)")
+        }
+
+        let result = try? await contract
+            .createReadOperation("profileCID", parameters: [ethAddr] as [AnyObject])?
+            .callContractMethod()
+
+        return (result?["0"] as? String) ?? ""
+    }
+
     func waitForConfirmation(txHash: String) async throws {
         let web3 = try await web3ReadOnly()
         let hashData = Data(hex: txHash)

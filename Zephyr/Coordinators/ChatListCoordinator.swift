@@ -16,7 +16,7 @@ final class ChatListCoordinator: ObservableObject {
     private var chatCoordinators: [String: ChatCoordinator] = [:]
 
     enum Route: Hashable {
-        case chat(chatId: String, recipientAddresses: [String])
+        case chat(chatId: String, recipientAddresses: [String], recipientNickname: String?)
     }
 
     init(container: ServiceContainer) {
@@ -29,8 +29,8 @@ final class ChatListCoordinator: ObservableObject {
 
     lazy var chatListViewModel: ChatListViewModel = ChatListViewModel(
         container: container,
-        onChatSelected: { [weak self] chatId, recipientAddresses in
-            self?.navigate(to: .chat(chatId: chatId, recipientAddresses: recipientAddresses))
+        onChatSelected: { [weak self] chatId, recipientAddresses, recipientNickname in
+            self?.navigate(to: .chat(chatId: chatId, recipientAddresses: recipientAddresses, recipientNickname: recipientNickname))
         }
     )
 
@@ -41,19 +41,20 @@ final class ChatListCoordinator: ObservableObject {
     @ViewBuilder
     func view(for route: Route) -> some View {
         switch route {
-        case .chat(let chatId, let recipientAddresses):
-            ChatView(viewModel: coordinator(for: chatId, recipientAddresses: recipientAddresses).viewModel)
+        case .chat(let chatId, let recipientAddresses, let recipientNickname):
+            ChatView(viewModel: coordinator(for: chatId, recipientAddresses: recipientAddresses, recipientNickname: recipientNickname).viewModel)
                 .preferredColorScheme(.dark)
         }
     }
 
-    private func coordinator(for chatId: String, recipientAddresses: [String]) -> ChatCoordinator {
+    private func coordinator(for chatId: String, recipientAddresses: [String], recipientNickname: String?) -> ChatCoordinator {
         if let existing = chatCoordinators[chatId] {
             return existing
         }
         let coordinator = ChatCoordinator(
             chatId: chatId,
             recipientAddresses: recipientAddresses,
+            recipientNickname: recipientNickname,
             container: container
         )
         chatCoordinators[chatId] = coordinator

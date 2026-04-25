@@ -13,7 +13,7 @@ enum Constants {
     static let storageBaseURL = "http://localhost:8080"
     static let RPCURL = "https://0xrpc.io/hoodi"
 
-    static let keyRegistryAddress = "0x4B948B5B31485F4069F48090cA7ac48B4FcD1EB4"
+    static let keyRegistryAddress = "0xf6Ae9950F3a70664f47D9C308ceCF53F5C5cEF65"
     static let messageRegistryAddress = "0xc6Ba133C2D1bb807f81C639685b4a0585e1ff0Db"
 
     static let messageRegistryABI = """
@@ -103,12 +103,34 @@ enum Constants {
         "stateMutability": "view"
       },
       {
+        "name": "setProfileCID",
+        "type": "function",
+        "inputs": [{"name": "cid", "type": "string"}],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      {
+        "name": "profileCID",
+        "type": "function",
+        "inputs": [{"name": "", "type": "address"}],
+        "outputs": [{"name": "", "type": "string"}],
+        "stateMutability": "view"
+      },
+      {
         "name": "KeyPublished",
         "type": "event",
         "inputs": [
           {"name": "user", "indexed": true, "type": "address"},
           {"name": "publicKey", "indexed": false, "type": "bytes"},
           {"name": "blockNumber", "indexed": false, "type": "uint256"}
+        ]
+      },
+      {
+        "name": "ProfileUpdated",
+        "type": "event",
+        "inputs": [
+          {"name": "user", "indexed": true, "type": "address"},
+          {"name": "cid", "indexed": false, "type": "string"}
         ]
       }
     ]

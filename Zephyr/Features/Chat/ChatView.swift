@@ -72,6 +72,9 @@ struct ChatView: View {
         if viewModel.isGroupChat {
             return "Группа · \(viewModel.recipientAddresses.count + 1)"
         }
+        if let nickname = viewModel.recipientNickname, !nickname.isEmpty {
+            return nickname
+        }
         return formattedAddress(viewModel.recipientAddress)
     }
 
