@@ -15,7 +15,7 @@ struct RestoreMnemonicView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.background.ignoresSafeArea()
+            NewAppTheme.Colors.bg.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 mnemonicGrid
@@ -32,19 +32,22 @@ struct RestoreMnemonicView: View {
                     .padding(.top, 16)
                     .padding(.horizontal, 24)
                 }
-                
+
                 Spacer()
 
                 restoreButton
-                    .disabled(!viewModel.isReady)
-                    .animation(.easeInOut(duration: 0.2), value: viewModel.isReady)
                     .padding(.horizontal, 24)
-                    .padding(.top, 24)
                     .padding(.bottom, 48)
             }
         }
         .navigationTitle("Восстановление кошелька")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                BackButton()
+            }
+        }
         .preferredColorScheme(.dark)
         .onTapGesture { focusedIndex = nil }
     }
@@ -78,20 +81,16 @@ struct RestoreMnemonicView: View {
         } label: {
             ZStack {
                 if viewModel.isLoading {
-                    ProgressView().tint(.black)
+                    ProgressView().tint(NewAppTheme.Colors.bg)
                 } else {
                     Text("Восстановить кошелёк")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(viewModel.isReady ? .black : AppTheme.textTertiary)
                 }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background(
-                RoundedRectangle(cornerRadius: AppTheme.radiusPill)
-                    .fill(viewModel.isReady ? AppTheme.accent : AppTheme.surface)
-            )
         }
+        .buttonStyle(ZephyrButtonStyle(filled: true))
+        .opacity(viewModel.isReady ? 1 : 0.5)
+        .disabled(!viewModel.isReady || viewModel.isLoading)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.isReady)
     }
 
     private func wordBinding(for index: Int) -> Binding<String> {

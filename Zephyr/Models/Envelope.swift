@@ -12,7 +12,7 @@ struct Envelope: Codable, Sendable {
     let messageId: String
     let chatId: String
     let senderAddr: String
-    let recipientAddr: String
+    let recipientAddrs: [String]
     let cid: String
     let timestamp: Int64
     let encryptedPayload: String?
@@ -22,12 +22,12 @@ struct Envelope: Codable, Sendable {
         case messageId = "message_id"
         case chatId = "chat_id"
         case senderAddr = "sender_addr"
-        case recipientAddr = "recipient_addr"
+        case recipientAddrs = "recipient_addrs"
         case cid, timestamp, encryptedPayload, signature
     }
 
     func hash() -> String {
-        let combined = messageId + chatId + senderAddr + recipientAddr + cid + String(timestamp)
+        let combined = messageId + chatId + senderAddr + recipientAddrs.sorted().joined() + cid + String(timestamp)
         return combined.data(using: .utf8)!.sha3(.keccak256).toHexString()
     }
 
@@ -36,7 +36,7 @@ struct Envelope: Codable, Sendable {
             messageId: messageId,
             chatId: chatId,
             senderAddr: senderAddr,
-            recipientAddr: recipientAddr,
+            recipientAddrs: recipientAddrs,
             cid: cid,
             timestamp: timestamp,
             encryptedPayload: encryptedPayload,

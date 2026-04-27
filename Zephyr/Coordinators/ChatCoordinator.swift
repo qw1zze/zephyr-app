@@ -12,7 +12,11 @@ import Combine
 final class ChatCoordinator: ObservableObject {
     private let container: ServiceContainer
     private let chatId: String
-    private let recipientAddress: String
+    private let recipientAddresses: [String]
+    private let recipientNickname: String?
+    private let localAlias: String?
+    private let recipientAvatarData: Data?
+    private let participantNicknames: [String: String]
 
     private lazy var cachedViewModel: ChatViewModel = buildViewModel()
 
@@ -20,9 +24,13 @@ final class ChatCoordinator: ObservableObject {
         cachedViewModel
     }
 
-    init(chatId: String, recipientAddress: String, container: ServiceContainer) {
+    init(chatId: String, recipientAddresses: [String], recipientNickname: String? = nil, localAlias: String? = nil, recipientAvatarData: Data? = nil, participantNicknames: [String: String] = [:], container: ServiceContainer) {
         self.chatId = chatId
-        self.recipientAddress = recipientAddress
+        self.recipientAddresses = recipientAddresses
+        self.recipientNickname = recipientNickname
+        self.localAlias = localAlias
+        self.recipientAvatarData = recipientAvatarData
+        self.participantNicknames = participantNicknames
         self.container = container
     }
 
@@ -31,8 +39,12 @@ final class ChatCoordinator: ObservableObject {
             .flatMap { String(data: $0, encoding: .utf8) } ?? ""
         return ChatViewModel(
             chatId: chatId,
-            recipientAddress: recipientAddress,
+            recipientAddresses: recipientAddresses,
             myAddress: address,
+            recipientNickname: recipientNickname,
+            localAlias: localAlias,
+            recipientAvatarData: recipientAvatarData,
+            participantNicknames: participantNicknames,
             container: container
         )
     }

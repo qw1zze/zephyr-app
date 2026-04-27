@@ -79,7 +79,7 @@ actor BlockchainRecoveryService {
                     group.addTask { [self] in
                         do {
                             let envelope = Envelope(messageId: meta.messageId, chatId: chatId, senderAddr: meta.sender,
-                                                    recipientAddr: recipientAddress, cid: meta.cid, timestamp: meta.timestamp,
+                                                    recipientAddrs: [recipientAddress], cid: meta.cid, timestamp: meta.timestamp,
                                                     encryptedPayload: nil, signature: nil)
                             
                             let decrypted = try await self.messageSender.decrypt(envelope: envelope)

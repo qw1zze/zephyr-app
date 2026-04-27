@@ -10,7 +10,7 @@ import SwiftUI
 enum AppTheme {
 
     static let background = Color(red: 0.07, green: 0.07, blue: 0.07)
-    static let accent = Color(red: 0.91, green: 0.88, blue: 0.37)
+    static let accent = Color(red: 0.85, green: 0.94, blue: 0)
     static let surface = Color(white: 0.11)
     static let surfaceHigh = Color(white: 0.14)
     static let separator = Color(white: 0.10)

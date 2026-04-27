@@ -13,17 +13,39 @@ struct ChatView: View {
     @State private var keyboardTrigger: Int = 0
     @State private var isPickerPresented = false
     @State private var selectedPhotoItem: PhotosPickerItem? = nil
+    @State private var isDocumentPickerPresented = false
+    @State private var isChatInfoPresented = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            messageList(keyboardTrigger: keyboardTrigger)
+        ZStack {
+            VStack(spacing: 0) {
+                messageList(keyboardTrigger: keyboardTrigger)
 
-            InputBarView(text: $viewModel.inputText, onSend: {
-                Task { await viewModel.sendMessage() }
-            }, onPickImage: {
-                isPickerPresented = true
-            })
+                InputBarView(text: $viewModel.inputText, onSend: {
+                    Task { await viewModel.sendMessage() }
+                }, onPickImage: {
+                    isPickerPresented = true
+                }, onPickFile: {
+                    isDocumentPickerPresented = true
+                })
+            }
+
+            if viewModel.recoveryState == .recovering {
+                Color.black.opacity(0.5)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+
+                VStack {
+                    Spacer()
+                    RecoveryProgressSheet {
+                        viewModel.cancelRecovery()
+                    }
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .ignoresSafeArea(edges: .bottom)
+            }
         }
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: viewModel.recoveryState == .recovering)
         .background(AppTheme.background.ignoresSafeArea())
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
             keyboardTrigger += 1
@@ -31,18 +53,25 @@ struct ChatView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
             keyboardTrigger += 1
         }
-        .navigationTitle(formattedAddress(viewModel.recipientAddress))
+        .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
         .preferredColorScheme(.dark)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                BackButton()
+            }
             ToolbarItem(placement: .navigationBarTrailing) {
-                recoveryButton
+                menuButton
             }
         }
         .alert(recoveryAlertTitle, isPresented: .constant(isRecoveryAlertPresented)) {
             Button("OK") {
                 viewModel.dismissRecoveryAlert()
             }
+        }
+        .sheet(isPresented: $isChatInfoPresented) {
+            ChatInfoView(viewModel: viewModel)
         }
         .photosPicker(isPresented: $isPickerPresented, selection: $selectedPhotoItem, matching: .images)
         .onChange(of: selectedPhotoItem) { _, newItem in
@@ -54,15 +83,33 @@ struct ChatView: View {
                 selectedPhotoItem = nil
             }
         }
+        .sheet(isPresented: $isDocumentPickerPresented) {
+            DocumentPickerView { data, fileName in
+                Task { await viewModel.sendFile(data, fileName: fileName) }
+            }
+        }
         .task {
             await viewModel.loadInitialMessages()
             viewModel.startRecieve()
         }
     }
 
+    private var navigationTitle: String {
+        if let alias = viewModel.localAlias, !alias.isEmpty {
+            return alias
+        }
+        if viewModel.isGroupChat {
+            return "Группа · \(viewModel.recipientAddresses.count + 1)"
+        }
+        if let nickname = viewModel.recipientNickname, !nickname.isEmpty {
+            return nickname
+        }
+        return formattedAddress(viewModel.recipientAddress)
+    }
+
     private var isRecoveryAlertPresented: Bool {
         switch viewModel.recoveryState {
-        case .done, .failed:
+        case .failed:
             return true
         default:
             return false
@@ -80,21 +127,25 @@ struct ChatView: View {
         }
     }
 
-    @ViewBuilder
-    private var recoveryButton: some View {
-        switch viewModel.recoveryState {
-        case .recovering:
-            ProgressView()
-                .tint(.white)
-        default:
+    private var menuButton: some View {
+        Menu {
             Button {
                 viewModel.recoverFromBlockchain()
             } label: {
-                Image(systemName: "arrow.clockwise.icloud")
-                    .foregroundColor(AppTheme.accent)
+                Label("Восстановить переписку", systemImage: "arrow.clockwise.icloud")
             }
+
+            Button {
+                isChatInfoPresented = true
+            } label: {
+                Label("О чате", systemImage: "info.circle")
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .foregroundColor(AppTheme.accent)
         }
     }
+
 
     private func messageList(keyboardTrigger: Int) -> some View {
         ScrollViewReader { proxy in
@@ -117,9 +168,18 @@ struct ChatView: View {
                         ForEach(group.messages, id: \.id) { message in
                             MessageBubbleView(
                                 message: message,
-                                isOutgoing: message.senderAddress == viewModel.myAddress
+                                isOutgoing: message.senderAddress == viewModel.myAddress,
+                                senderLabel: viewModel.isGroupChat && message.senderAddress != viewModel.myAddress
+                                    ? (viewModel.displayName(for: message.senderAddress) ?? formattedAddress(message.senderAddress))
+                                    : nil,
+                                downloadState: viewModel.messageDownloadStates[message.id],
+                                onRetry: message.senderAddress == viewModel.myAddress ? {
+                                    viewModel.retryMessage(id: message.id)
+                                } : nil,
+                                onCancelDownload: { viewModel.cancelDownload(id: message.id) },
+                                onRetryDownload: { viewModel.retryDownload(id: message.id) }
                             )
-                            .padding(.vertical, 2)
+                            .padding(.vertical, 7)
                             .id(message.id)
                         }
                     }
