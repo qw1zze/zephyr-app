@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "icon1-privacy.svg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

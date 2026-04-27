@@ -21,6 +21,7 @@ final class OnboardingCoordinator: ObservableObject {
         case restoreMnemonic
         case walletReady(address: String, isRestored: Bool)
         case publishKey
+        case profileSetup
     }
 
     init(container: ServiceContainer = .live(), onComplete: (() -> Void)? = nil) {
@@ -30,6 +31,11 @@ final class OnboardingCoordinator: ObservableObject {
 
     public func navigate(to route: Route) {
         path.append(route)
+    }
+
+    public func navigateBack() {
+        guard !path.isEmpty else { return }
+        path.removeLast()
     }
 
     public func handleWalletCreated(address: String) {
@@ -92,6 +98,19 @@ final class OnboardingCoordinator: ObservableObject {
             PublishKeyView(
                 viewModel: PublishKeyViewModel(
                     container: container,
+                    onComplete: { [weak self] isNewUser in
+                        if isNewUser {
+                            self?.navigate(to: .profileSetup)
+                        } else {
+                            self?.completeOnboarding()
+                        }
+                    }
+                )
+            )
+
+        case .profileSetup:
+            ProfileSetupView(
+                viewModel: ProfileSetupViewModel(
                     onComplete: { [weak self] in
                         self?.completeOnboarding()
                     }

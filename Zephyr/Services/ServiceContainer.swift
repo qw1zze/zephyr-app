@@ -23,6 +23,7 @@ struct ServiceContainer {
     let persistence: PersistenceService
     let relay: RelayService
     let storage: StorageService
+    let profile: ProfileService
     let messageSender: MessageSender
     let messageBatch: MessageBatchService
     let blockchainRecovery: BlockchainRecoveryService
@@ -37,6 +38,8 @@ struct ServiceContainer {
                                          logger: Logger(subsystem: "com.zephyr.app", category: "RelayClient"))
         let storage = StorageServiceInstance(baseURL: URL(string: Constants.storageBaseURL)!,
                                                logger: Logger(subsystem: "com.zephyr.app", category: "StorageClient"))
+        let profile = ProfileServiceInstance(baseURL: URL(string: Constants.storageBaseURL)!,
+                                              logger: Logger(subsystem: "com.zephyr.app", category: "ProfileClient"))
         let sender = MessageSender(keychain: keychain, ethereum: ethereum, storage: storage, relay: relay,
                                    crypto: crypto, logger: Logger(subsystem: "com.zephyr.app", category: "MessageSender"))
         
@@ -45,7 +48,8 @@ struct ServiceContainer {
                                                  messageSender: sender, logger: Logger(subsystem: "com.zephyr.app", category: "BlockchainRecovery"))
 
         return ServiceContainer(keychain: keychain, crypto: crypto, ethereum: ethereum, persistence: persistence, relay: relay,
-                                storage: storage, messageSender: sender, messageBatch: MessageBatchService(ethereum: ethereum),
+                                storage: storage, profile: profile, messageSender: sender,
+                                messageBatch: MessageBatchService(ethereum: ethereum),
                                 blockchainRecovery: recovery, envelopePublisher: PassthroughSubject<Envelope, Never>())
     }
 
@@ -55,6 +59,7 @@ struct ServiceContainer {
         let ethereum = BlockchainServiceMock()
         let relay = RelayServiceMock()
         let storage = StorageServiceMock()
+        let profile = ProfileServiceMock()
         let sender = MessageSender(
             keychain: keychain,
             ethereum: ethereum,
@@ -69,7 +74,8 @@ struct ServiceContainer {
                                                  logger: Logger(subsystem: "com.zephyr.app", category: "BlockchainRecovery"))
 
         return ServiceContainer(keychain: keychain, crypto: crypto, ethereum: ethereum, persistence: persistence,
-                                relay: relay, storage: storage, messageSender: sender, messageBatch: MessageBatchService(ethereum: ethereum),
+                                relay: relay, storage: storage, profile: profile, messageSender: sender,
+                                messageBatch: MessageBatchService(ethereum: ethereum),
                                 blockchainRecovery: recovery, envelopePublisher: PassthroughSubject<Envelope, Never>())
     }
 }

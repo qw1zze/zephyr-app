@@ -53,6 +53,10 @@ final class GenerateMnemonicViewModel: ObservableObject {
         }
     }
 
+    func didTapBack() {
+        coordinator?.navigateBack()
+    }
+
     func didTapContinue() {
         guard !words.isEmpty else { return }
         coordinator?.navigate(to: .verifyMnemonic(words: words))

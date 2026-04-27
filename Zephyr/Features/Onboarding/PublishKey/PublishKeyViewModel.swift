@@ -33,11 +33,15 @@ final class PublishKeyViewModel: ObservableObject {
     @Published private(set) var state: PublishKeyState = .checking
 
     private let container: ServiceContainer
-    let onComplete: () -> Void
+    let onComplete: (Bool) -> Void
 
-    init(container: ServiceContainer, onComplete: @escaping () -> Void) {
+    init(container: ServiceContainer, onComplete: @escaping (Bool) -> Void) {
         self.container = container
         self.onComplete = onComplete
+    }
+
+    func complete() {
+        onComplete(state == .done)
     }
     
     enum PublishKeyState: Equatable {
@@ -62,6 +66,7 @@ final class PublishKeyViewModel: ObservableObject {
             let existing = try await container.ethereum.getPublicKey(address: address)
             if existing != nil {
                 state = .alreadyExists
+                Task { await fetchAndCacheProfile(address: address) }
                 return
             }
 
@@ -80,5 +85,25 @@ final class PublishKeyViewModel: ObservableObject {
 
     func retry() async {
         await start()
+    }
+
+    private func fetchAndCacheProfile(address: String) async {
+        do {
+            let cid = try await container.ethereum.getProfileCID(address: address)
+            guard !cid.isEmpty else { return }
+
+            let profile = try await container.profile.getProfile(cid: cid)
+
+            if !profile.name.isEmpty {
+                UserDefaults.standard.set(profile.name, forKey: "zephyr.nickname")
+            }
+
+            if !profile.avatar.isEmpty {
+                let avatarData = try await container.storage.download(cid: profile.avatar)
+                UserDefaults.standard.set(avatarData, forKey: "zephyr.avatar")
+            }
+        } catch {
+
+        }
     }
 }

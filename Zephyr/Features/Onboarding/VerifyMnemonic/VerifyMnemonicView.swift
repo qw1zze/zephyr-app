@@ -17,7 +17,7 @@ struct VerifyMnemonicView: View {
 
             VStack(spacing: 0) {
                 header
-                    .padding(.top, 24)
+                    .padding(.top, 30)
                     .padding(.horizontal, 24)
 
                 inputWords
@@ -44,14 +44,21 @@ struct VerifyMnemonicView: View {
         .navigationTitle("Верификация")
         .navigationBarTitleDisplayMode(.inline)
         .preferredColorScheme(.dark)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                BackButton()
+            }
+        }
         .onTapGesture { focusedIndex = nil }
     }
     
     private var header: some View {
         VStack(spacing: 8) {
             Text("Подтвердите фразу")
-                .font(.system(size: 24, weight: .bold))
+                .font(.system(size: 26, weight: .bold))
                 .foregroundStyle(AppTheme.textPrimary)
+                .tracking(-0.5)
 
             Text("Введите слова под указанными номерами")
                 .font(.system(size: 14, weight: .regular))
@@ -61,7 +68,7 @@ struct VerifyMnemonicView: View {
     }
     
     private var inputWords: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 15) {
             ForEach(viewModel.wordsToVerify) { verifyWord in
                 WordInputField(
                     label: "Слово #\(verifyWord.index)",
@@ -87,13 +94,9 @@ struct VerifyMnemonicView: View {
                         .foregroundStyle(viewModel.isValid ? .black : AppTheme.textTertiary)
                 }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background(
-                RoundedRectangle(cornerRadius: AppTheme.radiusPill)
-                    .fill(viewModel.isValid ? AppTheme.accent : AppTheme.surface)
-            )
         }
+        .opacity(viewModel.isValid ? 1 : 0.5)
+        .buttonStyle(ZephyrButtonStyle(filled: true))
     }
 
     private func binding(for index: Int) -> Binding<String> {

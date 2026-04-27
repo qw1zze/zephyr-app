@@ -11,11 +11,13 @@ struct ChatListView: View {
     @ObservedObject var viewModel: ChatListViewModel
     @State private var showCreateChat = false
     @State private var searchText = ""
+    @State private var chatToRename: ChatModel? = nil
+    @State private var renameText = ""
 
     var body: some View {
         ZStack {
             AppTheme.background.ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
                 searchBar
                     .padding(.horizontal, 16)
@@ -49,20 +51,48 @@ struct ChatListView: View {
             viewModel.startListen()
         }
         .preferredColorScheme(.dark)
+        .alert("Переименовать", isPresented: Binding(
+            get: { chatToRename != nil },
+            set: { if !$0 { chatToRename = nil } }
+        )) {
+            TextField("Название", text: $renameText)
+            Button("Сохранить") {
+                if let chat = chatToRename {
+                    viewModel.renameChat(chat, name: renameText)
+                }
+                chatToRename = nil
+            }
+            Button("Отмена", role: .cancel) {
+                chatToRename = nil
+            }
+        } message: {
+            Text("Введите локальное название для этого чата")
+        }
+        .alert("Пользователь разблокирован", isPresented: Binding(
+            get: { viewModel.unblockAlertChat != nil },
+            set: { if !$0 { viewModel.dismissUnblockAlert() } }
+        )) {
+            Button("Восстановить переписку") {
+                if let chat = viewModel.unblockAlertChat {
+                    viewModel.restoreChat(chat)
+                }
+                viewModel.dismissUnblockAlert()
+            }
+            Button("Позже", role: .cancel) {
+                viewModel.dismissUnblockAlert()
+            }
+        } message: {
+            Text("Хотите восстановить историю переписки с этим пользователем?")
+        }
     }
     
     private var restoreButton: some View {
         Button {
             viewModel.restoreAllChats()
         } label: {
-            if viewModel.isRestoringHistory {
-                ProgressView()
-                    .tint(AppTheme.accent)
-            } else {
-                Image(systemName: "arrow.counterclockwise.icloud")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(AppTheme.accent)
-            }
+            Image(systemName: "arrow.counterclockwise.icloud")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(AppTheme.accent)
         }
         .disabled(viewModel.isRestoringHistory)
     }
@@ -88,7 +118,7 @@ struct ChatListView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: AppTheme.radiusInput))
+        .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: 14))
     }
 
     private var chatList: some View {
@@ -97,13 +127,37 @@ struct ChatListView: View {
                 ChatRowView(chat: chat) {
                     viewModel.selectChat(chat)
                 }
+                .contextMenu {
+                    Button {
+                        renameText = chat.localAlias ?? ""
+                        chatToRename = chat
+                    } label: {
+                        Label("Переименовать", systemImage: "pencil")
+                    }
+                    if chat.isBlocked {
+                        Button {
+                            viewModel.unblockChat(chat)
+                        } label: {
+                            Label("Разблокировать", systemImage: "lock.open")
+                        }
+                    } else {
+                        Button(role: .destructive) {
+                            viewModel.blockChat(chat)
+                        } label: {
+                            Label("Заблокировать", systemImage: "slash.circle")
+                        }
+                    }
+                    Button(role: .destructive) {
+                        viewModel.deleteChat(chat)
+                    } label: {
+                        Label("Удалить чат", systemImage: "trash")
+                    }
+                }
                 .listRowBackground(AppTheme.background)
-                .listRowSeparatorTint(AppTheme.separator)
             }
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .refreshable { await viewModel.refresh() }
     }
 
     private var emptyState: some View {

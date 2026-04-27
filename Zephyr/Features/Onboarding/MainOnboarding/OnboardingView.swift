@@ -12,7 +12,7 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.background.ignoresSafeArea()
+            ZephyrBackground(showGrid: false, showScanline: false, showCRT: true).ignoresSafeArea()
 
             VStack(spacing: 0) {
                 Spacer()
@@ -31,14 +31,23 @@ struct OnboardingView: View {
     }
     
     private var header: some View {
-        VStack(spacing: 12) {
-            Text("Zephyr")
-                .font(.system(size: 52, weight: .bold))
-                .foregroundStyle(AppTheme.accent)
-                .tracking(2)
+        VStack(spacing: 5) {
+            ZStack {
+                Text("Zephyr")
+                    .font(.system(size: 54, weight: .bold))
+                    .foregroundStyle(NewAppTheme.Colors.lemon.opacity(0.6))
+                    .tracking(-1.62)
+                    .blur(radius: 6)
+                
+                Text("Zephyr")
+                    .font(.system(size: 54, weight: .bold))
+                    .foregroundStyle(NewAppTheme.Colors.lemon)
+                    .tracking(-1.62)
+            }
 
             Text("Enter to privacy")
                 .font(.system(size: 16, weight: .regular))
+                .italic()
                 .foregroundStyle(AppTheme.textSecondary)
                 .tracking(0.5)
         }
@@ -48,24 +57,14 @@ struct OnboardingView: View {
         VStack(spacing: 12) {
             Button(action: viewModel.didTapCreateWallet) {
                 Text("Создать кошелёк")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.black)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(AppTheme.accent, in: RoundedRectangle(cornerRadius: AppTheme.radiusPill))
             }
+            .buttonStyle(ZephyrButtonStyle(filled: true))
+            .shadow(color: Color(hex: "D9F000").opacity(0.8), radius: 12)
 
             Button(action: viewModel.didTapRestoreWallet) {
                 Text("Уже есть кошелёк")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(AppTheme.textPrimary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(
-                        RoundedRectangle(cornerRadius: AppTheme.radiusPill)
-                            .stroke(Color(white: 0.3), lineWidth: 1)
-                    )
             }
+            .buttonStyle(ZephyrButtonStyle(filled: false))
         }
     }
 }

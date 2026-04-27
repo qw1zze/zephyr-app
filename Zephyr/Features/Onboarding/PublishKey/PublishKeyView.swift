@@ -12,7 +12,8 @@ struct PublishKeyView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.background.ignoresSafeArea()
+            ZephyrBackground(showGrid: false, showScanline: true, showCRT: true).ignoresSafeArea()
+            
             content
         }
         .navigationBarBackButtonHidden(true)
@@ -82,11 +83,12 @@ struct PublishKeyView: View {
             VStack(spacing: 24) {
                 ZStack {
                     Circle()
-                        .fill(AppTheme.accent.opacity(0.15))
+                        .fill(NewAppTheme.Colors.lemon.opacity(0.15))
                         .frame(width: 88, height: 88)
+                        .shadow(color: NewAppTheme.Colors.lemon.opacity(0.15), radius: 90)
                     Image(systemName: "checkmark")
                         .font(.system(size: 36, weight: .bold))
-                        .foregroundStyle(AppTheme.accent)
+                        .foregroundStyle(NewAppTheme.Colors.lemon)
                 }
 
                 Text(label)
@@ -96,14 +98,10 @@ struct PublishKeyView: View {
 
             Spacer()
 
-            Button(action: viewModel.onComplete) {
+            Button(action: viewModel.complete) {
                 Text("Перейти к чатам")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.black)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(AppTheme.accent, in: RoundedRectangle(cornerRadius: AppTheme.radiusPill))
             }
+            .buttonStyle(ZephyrButtonStyle(filled: true))
             .padding(.horizontal, 24)
             .padding(.bottom, 48)
         }
@@ -142,15 +140,8 @@ struct PublishKeyView: View {
                 Task { await viewModel.retry() }
             } label: {
                 Text("Повторить")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(AppTheme.textPrimary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(
-                        RoundedRectangle(cornerRadius: AppTheme.radiusPill)
-                            .stroke(Color(white: 0.3), lineWidth: 1)
-                    )
             }
+            .buttonStyle(ZephyrButtonStyle(filled: false))
             .padding(.horizontal, 24)
             .padding(.bottom, 48)
         }
@@ -162,7 +153,7 @@ struct PublishKeyView: View {
         PublishKeyView(
             viewModel: PublishKeyViewModel(
                 container: .mock(),
-                onComplete: {}
+                onComplete: { _ in }
             )
         )
     }

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 extension ChatListView {
     struct ChatRowView: View {
@@ -36,25 +37,53 @@ extension ChatListView {
                 .fill(AppTheme.surface)
                 .frame(width: 50, height: 50)
                 .overlay {
-                    Image(systemName: "person.fill")
-                        .font(.system(size: 22))
-                        .foregroundStyle(AppTheme.textSecondary)
+                    if let data = chat.recipientAvatarData,
+                       !chat.isGroupChat,
+                       let image = UIImage(data: data) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 50, height: 50)
+                            .clipShape(Circle())
+                    } else {
+                        Image(chat.isGroupChat ? "groupAvatar" : "chatAvatar")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: chat.isGroupChat ? 26 : 22)
+                    }
                 }
         }
         
         private var chatInfo: some View {
             VStack(alignment: .leading, spacing: 4) {
-                Text(shortAddress(chat.recipientAddress))
+                Text(chatDisplayName)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(AppTheme.textPrimary)
 
-                if let preview = chat.lastMessagePreview {
+                if chat.isBlocked {
+                    Text("Заблокирован")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.red.opacity(0.8))
+                } else if let preview = chat.lastMessagePreview {
                     Text(preview)
                         .font(.system(size: 13))
                         .foregroundStyle(AppTheme.textSecondary)
                         .lineLimit(1)
                 }
             }
+        }
+        
+        private var chatDisplayName: String {
+            if let alias = chat.localAlias, !alias.isEmpty {
+                return alias
+            }
+            if chat.isGroupChat {
+                return "Группа · \(chat.participantAddresses.count + 1) участника"
+            }
+            if let nickname = chat.recipientNickname, !nickname.isEmpty {
+                return nickname
+            }
+            return shortAddress(chat.recipientAddress)
         }
         
         private func chatDate(date: Date) -> some View {

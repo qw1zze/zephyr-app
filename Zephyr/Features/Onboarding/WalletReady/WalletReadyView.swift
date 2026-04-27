@@ -21,7 +21,7 @@ struct WalletReadyView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.background.ignoresSafeArea()
+            ZephyrBackground(showGrid: false, showScanline: false)
 
             VStack(spacing: 0) {
                 Spacer()
@@ -34,15 +34,16 @@ struct WalletReadyView: View {
                 addressField
                     .padding(.horizontal, 20)
                     .padding(.vertical, 14)
-                    .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: AppTheme.radiusCard))
+                    .background(NewAppTheme.Colors.bg2, in: RoundedRectangle(cornerRadius: NewAppTheme.radiusSmall))
                     .overlay(
-                        RoundedRectangle(cornerRadius: AppTheme.radiusCard)
-                            .stroke(AppTheme.surfaceHigh, lineWidth: 1)
+                        RoundedRectangle(cornerRadius: NewAppTheme.radiusSmall)
+                            .stroke(Color.white.opacity(0.12), lineWidth: 1)
                     )
 
                 Spacer()
 
-                startButton
+                Button("Далее", action: onStart)
+                    .buttonStyle(ZephyrButtonStyle())
                     .padding(.horizontal, 24)
                     .padding(.bottom, 48)
             }
@@ -50,55 +51,53 @@ struct WalletReadyView: View {
         .navigationBarBackButtonHidden(true)
         .preferredColorScheme(.dark)
     }
-    
+
     private var checkImage: some View {
         ZStack {
             Circle()
-                .fill(AppTheme.accent.opacity(0.15))
+                .fill(NewAppTheme.Colors.lemon.opacity(0.08))
+                .frame(width: 120, height: 120)
+                .blur(radius: 20)
+
+            Circle()
+                .fill(NewAppTheme.Colors.lemon.opacity(0.12))
+                .frame(width: 96, height: 96)
+
+            Circle()
+                .stroke(NewAppTheme.Colors.lemon.opacity(0.6), lineWidth: 1.5)
                 .frame(width: 96, height: 96)
 
             Image(systemName: "checkmark")
-                .font(.system(size: 40, weight: .bold))
-                .foregroundStyle(AppTheme.accent)
+                .font(.system(size: 36, weight: .bold))
+                .foregroundStyle(NewAppTheme.Colors.lemon)
         }
     }
-    
+
     @ViewBuilder
     private var title: some View {
         Text(isRestored ? "Кошелёк восстановлен" : "Кошелёк создан")
-            .font(.system(size: 26, weight: .bold))
-            .foregroundStyle(AppTheme.textPrimary)
+            .font(NewAppTheme.Fonts.title)
+            .foregroundStyle(NewAppTheme.Colors.textPrimary)
             .padding(.bottom, 8)
 
         Text("Ваш Ethereum адрес")
-            .font(.system(size: 13))
-            .foregroundStyle(AppTheme.textSecondary)
+            .font(NewAppTheme.Fonts.caption)
+            .foregroundStyle(NewAppTheme.Colors.textSecondary)
             .padding(.bottom, 16)
     }
-    
+
     private var addressField: some View {
         HStack(spacing: 10) {
             Text(shortAddress)
                 .font(.system(size: 15, weight: .semibold, design: .monospaced))
-                .foregroundStyle(AppTheme.textPrimary)
+                .foregroundStyle(NewAppTheme.Colors.textPrimary)
 
             Button(action: copyAddress) {
                 Image(systemName: addressCopied ? "checkmark" : "doc.on.doc")
                     .font(.system(size: 14))
-                    .foregroundStyle(addressCopied ? AppTheme.accent : AppTheme.textSecondary)
+                    .foregroundStyle(addressCopied ? NewAppTheme.Colors.lemon : NewAppTheme.Colors.textSecondary)
                     .animation(.easeInOut(duration: 0.2), value: addressCopied)
             }
-        }
-    }
-    
-    private var startButton: some View {
-        Button(action: onStart) {
-            Text("Далее")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(.black)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(AppTheme.accent, in: RoundedRectangle(cornerRadius: AppTheme.radiusPill))
         }
     }
 

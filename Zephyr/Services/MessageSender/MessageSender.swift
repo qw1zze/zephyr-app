@@ -9,6 +9,7 @@ import Foundation
 import os
 import web3swift
 import Web3Core
+import CryptoKit
 internal import CryptoSwift
 
 struct SentMessage {
@@ -21,6 +22,7 @@ struct DecryptedMessage {
     let messageType: String
     let text: String?
     let imageData: Data?
+    let fileName: String?
 }
 
 enum MessageSenderError: Error, LocalizedError {
@@ -44,6 +46,7 @@ actor MessageSender {
     private let relay: RelayService
     private let crypto: CryptoService
     private let logger: Logger
+    private var publicKeyCache: [String: Data] = [:]
 
     init(keychain: KeychainService, ethereum: BlockchainService, storage: StorageService,
          relay: RelayService, crypto: CryptoService, logger: Logger) {
@@ -55,37 +58,46 @@ actor MessageSender {
         self.logger = logger
     }
 
-    func send(messageId: String, text: String, chatId: String, recipientAddress: String) async throws -> SentMessage {
+    func send(messageId: String, text: String, chatId: String, recipientAddresses: [String]) async throws -> SentMessage {
         let payload = await MessagePayload.makeText(text)
-        return try await sendPayload(messageId: messageId, payload: payload, chatId: chatId, recipientAddress: recipientAddress)
+        return try await sendPayload(messageId: messageId, payload: payload, chatId: chatId, recipientAddresses: recipientAddresses)
     }
 
-    func sendImage(messageId: String, imageData: Data, chatId: String, recipientAddress: String) async throws -> SentMessage {
+    func sendImage(messageId: String, imageData: Data, chatId: String, recipientAddresses: [String]) async throws -> SentMessage {
         let payload = await MessagePayload.makeImage(imageData)
-        return try await sendPayload(messageId: messageId, payload: payload, chatId: chatId, recipientAddress: recipientAddress)
+        return try await sendPayload(messageId: messageId, payload: payload, chatId: chatId, recipientAddresses: recipientAddresses)
+    }
+
+    func sendFile(messageId: String, fileData: Data, fileName: String, chatId: String, recipientAddresses: [String]) async throws -> SentMessage {
+        let payload = await MessagePayload.makeFile(fileData, fileName: fileName)
+        return try await sendPayload(messageId: messageId, payload: payload, chatId: chatId, recipientAddresses: recipientAddresses)
     }
 
     func decrypt(envelope: Envelope) async throws -> DecryptedMessage {
         let privateKey = try await keychain.load(key: KeychainKeys.privateKey)
-
         let ciphertext = try await storage.download(cid: envelope.cid)
 
-        var plainTextData = Data()
-        do {
-            guard let recipientPublicKey = try await ethereum.getPublicKey(address: envelope.recipientAddr) else {
-                throw MessageSenderError.recipientKeyNotFound
-            }
-            let sharedSecret = try await crypto.computeSharedSecret(myPrivateKey: privateKey, recipientPublicKey: recipientPublicKey)
-            plainTextData = try await crypto.decrypt(ciphertext: ciphertext, sharedSecret: sharedSecret)
-        } catch {
+        let plainTextData: Data
+
+        if envelope.recipientAddrs.count > 1 {
+            let groupKey = Data(SHA256.hash(data: Data(envelope.chatId.utf8)))
+            plainTextData = try await crypto.decrypt(ciphertext: ciphertext, sharedSecret: groupKey)
+        } else {
+            let recipientAddr = envelope.recipientAddrs.first ?? ""
             do {
-                guard let senderPublicKey = try await ethereum.getPublicKey(address: envelope.senderAddr) else {
-                    throw MessageSenderError.recipientKeyNotFound
-                }
-                let sharedSecret = try await crypto.computeSharedSecret(myPrivateKey: privateKey, recipientPublicKey: senderPublicKey)
+                let recipientPublicKey = try await resolvePublicKey(address: recipientAddr)
+                let sharedSecret = try await crypto.computeSharedSecret(myPrivateKey: privateKey, recipientPublicKey: recipientPublicKey)
                 plainTextData = try await crypto.decrypt(ciphertext: ciphertext, sharedSecret: sharedSecret)
             } catch {
-                throw MessageSenderError.senderAddressCorrupted
+                do {
+                    let senderPublicKey = try await resolvePublicKey(address: envelope.senderAddr)
+                    let sharedSecret = try await crypto.computeSharedSecret(myPrivateKey: privateKey, recipientPublicKey: senderPublicKey)
+                    plainTextData = try await crypto.decrypt(ciphertext: ciphertext, sharedSecret: sharedSecret)
+                } catch {
+                    // Last resort: try group key (for group chat messages recovered with single recipient)
+                    let groupKey = Data(SHA256.hash(data: Data(envelope.chatId.utf8)))
+                    plainTextData = try await crypto.decrypt(ciphertext: ciphertext, sharedSecret: groupKey)
+                }
             }
         }
 
@@ -93,7 +105,7 @@ actor MessageSender {
         return parseDecryptedData(plainTextData)
     }
 
-    private func sendPayload(messageId: String, payload: MessagePayload, chatId: String, recipientAddress: String) async throws -> SentMessage {
+    private func sendPayload(messageId: String, payload: MessagePayload, chatId: String, recipientAddresses: [String]) async throws -> SentMessage {
         let privateKey = try await keychain.load(key: KeychainKeys.privateKey)
         let addressData = try await keychain.load(key: KeychainKeys.address)
 
@@ -101,11 +113,14 @@ actor MessageSender {
             throw MessageSenderError.senderAddressCorrupted
         }
 
-        guard let recipientPublicKey = try await ethereum.getPublicKey(address: recipientAddress) else {
-            throw MessageSenderError.recipientKeyNotFound
+        let sharedSecret: Data
+        if recipientAddresses.count > 1 {
+            sharedSecret = Data(SHA256.hash(data: Data(chatId.utf8)))
+        } else {
+            let recipientPublicKey = try await resolvePublicKey(address: recipientAddresses[0])
+            sharedSecret = try await crypto.computeSharedSecret(myPrivateKey: privateKey, recipientPublicKey: recipientPublicKey)
         }
 
-        let sharedSecret = try await crypto.computeSharedSecret(myPrivateKey: privateKey, recipientPublicKey: recipientPublicKey)
         let payloadData = (try? JSONEncoder().encode(payload)) ?? Data()
         let ciphertext = try await crypto.encrypt(plaintext: payloadData, sharedSecret: sharedSecret)
 
@@ -117,7 +132,7 @@ actor MessageSender {
             messageId: messageId,
             chatId: chatId,
             senderAddr: myAddress,
-            recipientAddr: recipientAddress,
+            recipientAddrs: recipientAddresses,
             cid: cid,
             timestamp: Int64(timestamp.timeIntervalSince1970),
             encryptedPayload: nil,
@@ -134,18 +149,29 @@ actor MessageSender {
         return SentMessage(messageId: messageId, cid: cid, timestamp: timestamp)
     }
 
+    private func resolvePublicKey(address: String) async throws -> Data {
+        if let cached = publicKeyCache[address] { return cached }
+        guard let key = try await ethereum.getPublicKey(address: address) else {
+            throw MessageSenderError.recipientKeyNotFound
+        }
+        publicKeyCache[address] = key
+        return key
+    }
+
     private func parseDecryptedData(_ data: Data) -> DecryptedMessage {
         if let payload = try? JSONDecoder().decode(MessagePayload.self, from: data) {
             switch payload.type {
             case "image":
-                return DecryptedMessage(messageType: "image", text: nil, imageData: payload.imageData)
+                return DecryptedMessage(messageType: "image", text: nil, imageData: payload.imageData, fileName: nil)
+            case "file":
+                return DecryptedMessage(messageType: "file", text: nil, imageData: payload.fileData, fileName: payload.fileName)
             default:
-                return DecryptedMessage(messageType: "text", text: payload.text, imageData: nil)
+                return DecryptedMessage(messageType: "text", text: payload.text, imageData: nil, fileName: nil)
             }
         }
-        
+
         let text = String(data: data, encoding: .utf8) ?? ""
-        return DecryptedMessage(messageType: "text", text: text, imageData: nil)
+        return DecryptedMessage(messageType: "text", text: text, imageData: nil, fileName: nil)
     }
 
     private func signEIP191(message: String, privateKey: Data) throws -> String {

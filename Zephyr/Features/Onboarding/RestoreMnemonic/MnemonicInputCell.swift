@@ -17,22 +17,22 @@ extension RestoreMnemonicView {
         let onPaste: (String) -> Void
 
         private var borderColor: Color {
-            if isInvalid  { return .red.opacity(0.8) }
-            if isFocused  { return Color(white: 0.4) }
-            return Color(white: 0.12)
+            if isInvalid { return .red.opacity(0.8) }
+            if isFocused { return NewAppTheme.Colors.lemon.opacity(0.6) }
+            return .white.opacity(0.1)
         }
 
         var body: some View {
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text("\(index + 1)")
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(Color(white: 0.35))
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.4))
 
                 TextField("", text: $word)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
                     .foregroundStyle(.white)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: 13, weight: .semibold))
                     .onSubmit(onCommit)
                     .onChange(of: word) { newValue in
                         if newValue.contains(" ") {
@@ -40,11 +40,12 @@ extension RestoreMnemonicView {
                         }
                     }
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 8)
-            .background(Color(white: 0.07), in: RoundedRectangle(cornerRadius: 10))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 10)
+            .background(NewAppTheme.Colors.bg3, in: RoundedRectangle(cornerRadius: NewAppTheme.radiusSmall))
             .overlay(
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: NewAppTheme.radiusSmall)
                     .stroke(borderColor, lineWidth: 1)
             )
             .animation(.easeInOut(duration: 0.15), value: isInvalid)
