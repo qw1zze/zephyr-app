@@ -40,14 +40,6 @@ struct SettingsView: View {
         }
         .navigationTitle("Настройки")
         .navigationBarTitleDisplayMode(.large)
-        .photosPicker(
-            isPresented: Binding(
-                get: { photoItem != nil },
-                set: { if !$0 { photoItem = nil } }
-            ),
-            selection: $photoItem,
-            matching: .images
-        )
         .onChange(of: photoItem) { _, newItem in
             Task {
                 guard let newItem,
@@ -133,8 +125,11 @@ struct SettingsView: View {
                     .submitLabel(.done)
                     .onSubmit { viewModel.saveProfile() }
                     .disabled(viewModel.isSaving)
+                    .onChange(of: viewModel.nickname) { _, newValue in
+                        viewModel.nicknameDidChange(newValue)
+                    }
 
-                if !viewModel.nickname.isEmpty && !viewModel.isSaving {
+                if viewModel.hasUnsavedChanges && !viewModel.isSaving {
                     Button {
                         viewModel.saveProfile()
                     } label: {
@@ -189,7 +184,7 @@ struct SettingsView: View {
                         UIPasteboard.general.string = viewModel.address
                     } label: {
                         Image(systemName: "doc.on.doc")
-                            .font(.system(size: 16))
+                            .font(.system(size: 11))
                             .foregroundStyle(AppTheme.accent)
                     }
                 }

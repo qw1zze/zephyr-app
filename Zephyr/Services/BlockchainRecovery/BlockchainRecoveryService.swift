@@ -88,7 +88,7 @@ actor BlockchainRecoveryService {
                                                      cid: meta.cid, timestamp: Date(timeIntervalSince1970: TimeInterval(meta.timestamp)),
                                                      isDecrypted: true, plaintext: decrypted.text,
                                                      messageType: decrypted.messageType, imageData: decrypted.imageData,
-                                                     status: "delivered")
+                                                     fileName: decrypted.fileName, status: "delivered")
                             return (index, model)
                         } catch {
                             self.logger.error("failed msg \(meta.messageId): \(error.localizedDescription)")

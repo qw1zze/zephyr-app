@@ -194,6 +194,14 @@ private struct AddressEntryRow: View {
             Text("Неверный формат адреса")
                 .font(.system(size: 12))
                 .foregroundStyle(.red)
+        case .selfAddress:
+            Text("Невозможно использовать собственный адрес")
+                .font(.system(size: 12))
+                .foregroundStyle(.red)
+        case .duplicate:
+            Text("Этот адрес уже добавлен")
+                .font(.system(size: 12))
+                .foregroundStyle(.red)
         case .checking:
             HStack(spacing: 6) {
                 ProgressView()

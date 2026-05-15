@@ -310,8 +310,12 @@ final class ChatViewModel: ObservableObject {
     }
 
     private func markFailedDownloads(in batch: [MessageModel]) {
-        for m in batch where !m.isDecrypted && m.imageData == nil && m.plaintext == nil {
-            messageDownloadStates[m.id] = .failed
+        for m in batch {
+            let notDownloaded = !m.isDecrypted && m.imageData == nil && m.plaintext == nil
+            let dataLost = m.isDecrypted && (m.isFileMessage || m.isImageMessage) && m.imageData == nil && m.senderAddress.lowercased() != myAddress.lowercased()
+            if notDownloaded || dataLost {
+                messageDownloadStates[m.id] = .failed
+            }
         }
     }
 

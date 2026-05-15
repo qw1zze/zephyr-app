@@ -413,7 +413,7 @@ final class BlockchainServiceInstance: BlockchainService {
         let web3 = try await web3ReadOnly()
         let hashData = Data(hex: txHash)
 
-        for _ in 0..<30 {
+        for _ in 0..<10 {
             try await Task.sleep(nanoseconds: 2_000_000_000)
 
             if let receipt = try? await web3.eth.transactionReceipt(hashData) {

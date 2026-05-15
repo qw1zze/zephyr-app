@@ -17,17 +17,15 @@ final class RestoreMnemonicViewModel: ObservableObject {
 
     private weak var coordinator: OnboardingCoordinator?
     private let cryptoService: CryptoService
-    private let keychainService: KeychainService
 
     var isReady: Bool {
         let filled = words.prefix(12).allSatisfy { !$0.isEmpty }
         return filled && invalidWords.isEmpty && !isLoading
     }
 
-    init(coordinator: OnboardingCoordinator, cryptoService: CryptoService, keychainService: KeychainService) {
+    init(coordinator: OnboardingCoordinator, cryptoService: CryptoService) {
         self.coordinator = coordinator
         self.cryptoService = cryptoService
-        self.keychainService = keychainService
     }
 
     func validateWord(at index: Int) {
@@ -73,17 +71,13 @@ final class RestoreMnemonicViewModel: ObservableObject {
         do {
             try cryptoService.validateMnemonic(activeWords)
             let wallet = try cryptoService.deriveWallet(from: activeWords)
-            let phrase = activeWords.joined(separator: " ")
-
-            if let mnemonicData = phrase.data(using: .utf8),
-               let addressData = wallet.address.data(using: .utf8) {
-                try keychainService.save(key: KeychainKeys.mnemonic,    data: mnemonicData)
-                try keychainService.save(key: KeychainKeys.address,     data: addressData)
-                try keychainService.save(key: KeychainKeys.privateKey,  data: wallet.privateKey)
-                try keychainService.save(key: KeychainKeys.publicKey,   data: wallet.publicKey)
-            }
-
-            coordinator?.handleWalletRestored(address: wallet.address)
+            let pending = PendingWallet(
+                address: wallet.address,
+                privateKey: wallet.privateKey,
+                publicKey: wallet.publicKey,
+                mnemonic: activeWords.joined(separator: " ")
+            )
+            coordinator?.handleWalletRestored(wallet: pending)
         } catch CryptoError.invalidMnemonic {
             error = "Неверная мнемо фраза"
         } catch {

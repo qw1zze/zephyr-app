@@ -17,6 +17,10 @@ final class SettingsViewModel: ObservableObject {
     @Published var isSaving = false
     @Published var saveError: String? = nil
     @Published var savedSuccessfully = false
+    @Published private(set) var hasUnsavedChanges = false
+
+    private var originalNickname: String = ""
+    private var avatarChanged = false
 
     private let container: ServiceContainer
     private let onLogout: () -> Void
@@ -34,7 +38,11 @@ final class SettingsViewModel: ObservableObject {
     }
 
     func loadProfile() {
-        nickname = UserDefaults.standard.string(forKey: StorageKeys.nickname) ?? ""
+        let saved = UserDefaults.standard.string(forKey: StorageKeys.nickname) ?? ""
+        nickname = saved
+        originalNickname = saved
+        avatarChanged = false
+        hasUnsavedChanges = false
         if let data = UserDefaults.standard.data(forKey: StorageKeys.avatar) {
             avatarImage = UIImage(data: data)
         }
@@ -44,11 +52,14 @@ final class SettingsViewModel: ObservableObject {
         }
     }
 
+    func nicknameDidChange(_ newValue: String) {
+        hasUnsavedChanges = newValue != originalNickname || avatarChanged
+    }
+
     func setAvatar(_ image: UIImage) {
         avatarImage = image
-        if let data = image.jpegData(compressionQuality: 0.8) {
-            UserDefaults.standard.set(data, forKey: StorageKeys.avatar)
-        }
+        avatarChanged = true
+        hasUnsavedChanges = true
     }
 
     func saveProfile() {
@@ -76,6 +87,9 @@ final class SettingsViewModel: ObservableObject {
                 UserDefaults.standard.set(trimmed, forKey: StorageKeys.nickname)
                 UserDefaults.standard.set(profileCID, forKey: StorageKeys.profileCID)
 
+                originalNickname = trimmed
+                avatarChanged = false
+                hasUnsavedChanges = false
                 savedSuccessfully = true
             } catch {
                 saveError = error.localizedDescription

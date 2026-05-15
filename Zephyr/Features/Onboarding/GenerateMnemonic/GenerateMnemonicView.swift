@@ -59,7 +59,7 @@ struct GenerateMnemonicView: View {
             }
         }
         .preferredColorScheme(.dark)
-        .task { await viewModel.generateMnemonic() }
+        .task { if viewModel.words.isEmpty { await viewModel.generateMnemonic() } }
     }
 
     private var warningBanner: some View {

@@ -65,14 +65,38 @@ extension ChatListView {
                         .font(.system(size: 13))
                         .foregroundStyle(.red.opacity(0.8))
                 } else if let preview = chat.lastMessagePreview {
-                    Text(preview)
-                        .font(.system(size: 13))
-                        .foregroundStyle(AppTheme.textSecondary)
-                        .lineLimit(1)
+                    previewLabel(preview)
                 }
             }
         }
         
+        @ViewBuilder
+        private func previewLabel(_ preview: String) -> some View {
+            if preview.hasPrefix("📷") {
+                HStack(spacing: 4) {
+                    Image(systemName: "photo")
+                    Text("Изображение")
+                }
+                .font(.system(size: 13))
+                .foregroundStyle(AppTheme.textSecondary)
+                .lineLimit(1)
+            } else if preview.hasPrefix("📎") {
+                let fileName = String(preview.dropFirst(2)).trimmingCharacters(in: .whitespaces)
+                HStack(spacing: 4) {
+                    Image(systemName: "paperclip")
+                    Text(fileName.isEmpty ? "Файл" : fileName)
+                }
+                .font(.system(size: 13))
+                .foregroundStyle(AppTheme.textSecondary)
+                .lineLimit(1)
+            } else {
+                Text(preview)
+                    .font(.system(size: 13))
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .lineLimit(1)
+            }
+        }
+
         private var chatDisplayName: String {
             if let alias = chat.localAlias, !alias.isEmpty {
                 return alias

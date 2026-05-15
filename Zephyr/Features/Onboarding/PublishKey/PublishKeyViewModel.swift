@@ -16,13 +16,13 @@ enum PublishKeyError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .transactionFailed:         
+        case .transactionFailed:
             return "Транзакция отклонена сетью"
-        case .timeout:                  
-            return "Превышено время ожидания подтверждения"
-        case .keychainError:             
+        case .timeout:
+            return "Проверьте баланс для оплаты газа"
+        case .keychainError:
             return "Ошибка чтения ключей из Keychain"
-        case .contractError(let msg):    
+        case .contractError(let msg):
             return "Ошибка контракта: \(msg)"
         }
     }
@@ -33,10 +33,12 @@ final class PublishKeyViewModel: ObservableObject {
     @Published private(set) var state: PublishKeyState = .checking
 
     private let container: ServiceContainer
+    private let pendingWallet: PendingWallet
     let onComplete: (Bool) -> Void
 
-    init(container: ServiceContainer, onComplete: @escaping (Bool) -> Void) {
+    init(container: ServiceContainer, pendingWallet: PendingWallet, onComplete: @escaping (Bool) -> Void) {
         self.container = container
+        self.pendingWallet = pendingWallet
         self.onComplete = onComplete
     }
 
@@ -56,22 +58,20 @@ final class PublishKeyViewModel: ObservableObject {
     func start() async {
         state = .checking
         do {
-            guard let addressStr = try? container.keychain.load(key: KeychainKeys.address),
-                let address = String(data: addressStr, encoding: .utf8),
-                let pubKeyData = try? container.keychain.load(key: KeychainKeys.publicKey)
-            else {
-                throw PublishKeyError.keychainError
-            }
+            let address = pendingWallet.address
 
             let existing = try await container.ethereum.getPublicKey(address: address)
             if existing != nil {
+                try saveToKeychain()
                 state = .alreadyExists
                 Task { await fetchAndCacheProfile(address: address) }
                 return
             }
 
+            try saveToKeychain()
+
             state = .publishing
-            let txHash = try await container.ethereum.publishPublicKey(pubKeyData)
+            let txHash = try await container.ethereum.publishPublicKey(pendingWallet.publicKey)
 
             state = .waitingConfirm
             try await container.ethereum.waitForConfirmation(txHash: txHash)
@@ -79,12 +79,32 @@ final class PublishKeyViewModel: ObservableObject {
             state = .done
 
         } catch {
+            deleteFromKeychain()
             state = .error(error.localizedDescription)
         }
     }
 
     func retry() async {
         await start()
+    }
+
+    private func saveToKeychain() throws {
+        guard let mnemonicData = pendingWallet.mnemonic.data(using: .utf8),
+              let addressData = pendingWallet.address.data(using: .utf8) else {
+            throw PublishKeyError.keychainError
+        }
+        
+        try container.keychain.save(key: KeychainKeys.mnemonic, data: mnemonicData)
+        try container.keychain.save(key: KeychainKeys.address, data: addressData)
+        try container.keychain.save(key: KeychainKeys.privateKey, data: pendingWallet.privateKey)
+        try container.keychain.save(key: KeychainKeys.publicKey, data: pendingWallet.publicKey)
+    }
+
+    private func deleteFromKeychain() {
+        try? container.keychain.delete(key: KeychainKeys.mnemonic)
+        try? container.keychain.delete(key: KeychainKeys.address)
+        try? container.keychain.delete(key: KeychainKeys.privateKey)
+        try? container.keychain.delete(key: KeychainKeys.publicKey)
     }
 
     private func fetchAndCacheProfile(address: String) async {

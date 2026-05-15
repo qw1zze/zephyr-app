@@ -148,13 +148,3 @@ struct PublishKeyView: View {
     }
 }
 
-#Preview("Checking") {
-    NavigationStack {
-        PublishKeyView(
-            viewModel: PublishKeyViewModel(
-                container: .mock(),
-                onComplete: { _ in }
-            )
-        )
-    }
-}

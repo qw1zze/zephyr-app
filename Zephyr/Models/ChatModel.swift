@@ -27,11 +27,12 @@ final class ChatModel {
     }
 
     init(id: String, recipientAddress: String, participantAddresses: [String] = []) {
+        let dated = Date()
         self.id = id
         self.recipientAddress = recipientAddress
         self.participantAddresses = participantAddresses
-        self.createdAt = Date()
-        self.lastMessageDate = nil
+        self.createdAt = dated
+        self.lastMessageDate = dated
         self.lastMessagePreview = nil
         self.isRegisteredOnChain = false
         self.isBlocked = false

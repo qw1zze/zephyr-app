@@ -114,8 +114,7 @@ struct VerifyMnemonicView: View {
                 coordinator: OnboardingCoordinator(),
                 words: ["apple","brave","crane","desert","eagle","forest",
                         "grape","honor","island","jungle","knight","lemon"],
-                cryptoService: CryptoServiceMock(),
-                keychainService: KeychainServiceMock()
+                cryptoService: CryptoServiceMock()
             )
         )
     }

@@ -18,7 +18,6 @@ final class VerifyMnemonicViewModel: ObservableObject {
     private let originalWords: [String]
     private weak var coordinator: OnboardingCoordinator?
     private let cryptoService: CryptoService
-    private let keychainService: KeychainService
     
     struct VerifyWord: Identifiable {
         let id = UUID()
@@ -45,11 +44,10 @@ final class VerifyMnemonicViewModel: ObservableObject {
         return input.lowercased().trimmingCharacters(in: .whitespaces) == correct.lowercased()
     }
 
-    init(coordinator: OnboardingCoordinator, words: [String], cryptoService: CryptoService, keychainService: KeychainService) {
+    init(coordinator: OnboardingCoordinator, words: [String], cryptoService: CryptoService) {
         self.coordinator = coordinator
         self.originalWords = words
         self.cryptoService = cryptoService
-        self.keychainService = keychainService
 
         let indices = (0..<words.count)
             .shuffled()
@@ -72,17 +70,13 @@ final class VerifyMnemonicViewModel: ObservableObject {
 
         do {
             let wallet = try cryptoService.deriveWallet(from: originalWords)
-            let phrase = originalWords.joined(separator: " ")
-
-            if let mnemonicData = phrase.data(using: .utf8),
-               let addressData = wallet.address.data(using: .utf8) {
-                try keychainService.save(key: KeychainKeys.mnemonic,    data: mnemonicData)
-                try keychainService.save(key: KeychainKeys.address,     data: addressData)
-                try keychainService.save(key: KeychainKeys.privateKey,  data: wallet.privateKey)
-                try keychainService.save(key: KeychainKeys.publicKey,   data: wallet.publicKey)
-            }
-
-            coordinator?.handleWalletCreated(address: wallet.address)
+            let pending = PendingWallet(
+                address: wallet.address,
+                privateKey: wallet.privateKey,
+                publicKey: wallet.publicKey,
+                mnemonic: originalWords.joined(separator: " ")
+            )
+            coordinator?.handleWalletCreated(wallet: pending)
         } catch {
             self.error = "Ошибка: \(error.localizedDescription)"
         }

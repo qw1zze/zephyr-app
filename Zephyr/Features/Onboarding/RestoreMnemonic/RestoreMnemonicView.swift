@@ -112,8 +112,7 @@ struct RestoreMnemonicView: View {
         RestoreMnemonicView(
             viewModel: RestoreMnemonicViewModel(
                 coordinator: OnboardingCoordinator(),
-                cryptoService: CryptoServiceMock(),
-                keychainService: KeychainServiceMock()
+                cryptoService: CryptoServiceMock()
             )
         )
     }

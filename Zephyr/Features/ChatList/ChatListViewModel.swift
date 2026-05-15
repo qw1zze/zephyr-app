@@ -11,6 +11,8 @@ import Combine
 enum AddressValidation: Equatable {
     case idle
     case invalidFormat
+    case selfAddress
+    case duplicate
     case checking
     case notFound
     case valid
@@ -74,6 +76,9 @@ final class ChatListViewModel: ObservableObject {
         validationTasks[id]?.cancel()
         validationTasks.removeValue(forKey: id)
         addressEntries.removeAll { $0.id == id }
+        for entry in addressEntries where entry.validation == .duplicate {
+            Task { await validateEntry(id: entry.id, value: entry.text) }
+        }
     }
 
     func validateEntry(id: UUID, value: String) async {
@@ -92,6 +97,25 @@ final class ChatListViewModel: ObservableObject {
 
         guard isValidEthereumAddress(value) else {
             addressEntries[index].validation = .invalidFormat
+            addressEntries[index].profileName = nil
+            addressEntries[index].avatarData = nil
+            return
+        }
+
+        let myAddress = (try? container.keychain.load(key: KeychainKeys.address))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? ""
+        if !myAddress.isEmpty && value.lowercased() == myAddress.lowercased() {
+            addressEntries[index].validation = .selfAddress
+            addressEntries[index].profileName = nil
+            addressEntries[index].avatarData = nil
+            return
+        }
+
+        let isDuplicate = addressEntries.contains { entry in
+            entry.id != id && entry.text.lowercased() == value.lowercased()
+        }
+        if isDuplicate {
+            addressEntries[index].validation = .duplicate
             addressEntries[index].profileName = nil
             addressEntries[index].avatarData = nil
             return
